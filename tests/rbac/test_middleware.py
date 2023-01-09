@@ -170,14 +170,13 @@ class IdentityHeaderMiddlewareTest(IdentityRequest):
 
     def test_process_cross_account_request(self):
         """Test that the process request functions correctly for cross account request."""
-        middleware = IdentityHeaderMiddleware()
         # User without redhat email will fail.
         request_context = self._create_request_context(
             self.customer, self.user_data, create_customer=False, cross_account=True, is_internal=True
         )
         mock_request = request_context["request"]
         mock_request.path = "/api/v1/providers/"
-
+        middleware = IdentityHeaderMiddleware()
         response = middleware.process_request(mock_request)
         self.assertIsInstance(response, HttpResponseUnauthorizedRequest)
 
