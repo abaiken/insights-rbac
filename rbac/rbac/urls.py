@@ -22,8 +22,8 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 import os
 import re
 
-from django.urls import include, re_path
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.urls import include, re_path
 from django.urls import path
 from management import consumers
 

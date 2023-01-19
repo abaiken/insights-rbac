@@ -7,13 +7,13 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('management', '0038_auto_20220512_1800'),
+        ("management", "0038_auto_20220512_1800"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='resourcedefinition',
-            name='attributeFilter',
+            model_name="resourcedefinition",
+            name="attributeFilter",
             field=models.JSONField(default=dict),
         ),
     ]
