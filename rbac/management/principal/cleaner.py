@@ -43,26 +43,26 @@ def clean_tenant_principals(tenant):
     for principal in principals:
         if principal.cross_account:
             continue
-        logger.debug("Checking for username %s for tenant %s.", principal.username, tenant_id)
+        logger.debug("Checking for user_id %s for tenant %s.", principal.user_id, tenant_id)
         account = account_id_for_tenant(tenant)
         org_id = tenant.org_id
         if settings.AUTHENTICATE_WITH_ORG_ID:
-            resp = proxy.request_filtered_principals([principal.username], org_id=org_id)
+            resp = proxy.request_filtered_principals([principal.user_id], org_id=org_id)
         else:
-            resp = proxy.request_filtered_principals([principal.username], account=account)
+            resp = proxy.request_filtered_principals([principal.user_id], account=account)
         status_code = resp.get("status_code")
         data = resp.get("data")
         if status_code == status.HTTP_200_OK and data:
-            logger.debug("Username %s found for tenant %s, no change needed.", principal.username, tenant_id)
+            logger.debug("User_id %s found for tenant %s, no change needed.", principal.user_id, tenant_id)
         elif status_code == status.HTTP_200_OK and not data:
-            removed_principals.append(principal.username)
+            removed_principals.append(principal.user_id)
             principal.delete()
-            logger.info("Username %s not found for tenant %s, principal removed.", principal.username, tenant_id)
+            logger.info("User_id %s not found for tenant %s, principal removed.", principal.user_id, tenant_id)
         else:
             logger.warn(
-                "Unknown status %d when checking username %s" " for tenant %s, no change needed.",
+                "Unknown status %d when checking user_id %s" " for tenant %s, no change needed.",
                 status_code,
-                principal.username,
+                principal.user_id,
                 tenant_id,
             )
     logger.info(

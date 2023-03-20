@@ -104,7 +104,7 @@ def role_obj_change_notification_handler(role_obj, operation, user=None):
         org_id = user.org_id
     else:
         org_id = None
-    payload = payload_builder(user.username, role_obj)
+    payload = payload_builder(user.user_id, role_obj)
     # Role created
     if operation == "created":
         event_type = "custom-role-created"
@@ -127,7 +127,7 @@ def group_obj_change_notification_handler(user, group_obj, operation):
         org_id = user.org_id
     else:
         org_id = None
-    payload = payload_builder(user.username, group_obj)
+    payload = payload_builder(user.user_id, group_obj)
     # Group created
     if operation == "created":
         if not group_obj.system:
@@ -175,7 +175,7 @@ def group_role_change_notification_handler(user, group_obj, role_obj, operation)
         org_id = user.org_id
     else:
         org_id = None
-    payload = payload_builder(user.username, group_obj, operation, ("role", role_obj))
+    payload = payload_builder(user.user_id, group_obj, operation, ("role", role_obj))
 
     if group_obj.platform_default:
         event_type = "custom-default-access-updated"
@@ -195,7 +195,7 @@ def group_principal_change_notification_handler(user, group_obj, principal, oper
         org_id = user.org_id
     else:
         org_id = None
-    payload = payload_builder(user.username, group_obj, operation, ("principal", principal))
+    payload = payload_builder(user.user_id, group_obj, operation, ("principal", principal))
 
     event_type = "group-updated"
     notify(event_type, payload, account_id, org_id)
@@ -210,16 +210,16 @@ def group_flag_change_notification_handler(user, group_obj):
         org_id = user.org_id
     else:
         org_id = None
-    payload = payload_builder(user.username, group_obj)
+    payload = payload_builder(user.user_id, group_obj)
 
     event_type = "platform-default-group-turned-into-custom"
 
     notify(event_type, payload, account_id, org_id)
 
 
-def payload_builder(username, resource_obj, operation=None, extra_info=None):
+def payload_builder(user_id, resource_obj, operation=None, extra_info=None):
     """Payload builder for notifications message."""
-    payload = {"username": username, "name": resource_obj.name, "uuid": str(resource_obj.uuid)}
+    payload = {"user_id": user_id, "name": resource_obj.name, "uuid": str(resource_obj.uuid)}
     if operation:
         payload["operation"] = operation
 

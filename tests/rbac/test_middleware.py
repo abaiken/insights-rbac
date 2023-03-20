@@ -102,7 +102,7 @@ class RbacTenantMiddlewareTest(IdentityRequest):
         self.request = self.request_context["request"]
         self.request.path = "/api/v1/providers/"
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         user.org_id = self.customer_data["org_id"]
         self.request.user = user
@@ -136,7 +136,7 @@ class RbacTenantMiddlewareTest(IdentityRequest):
         request.path = "/api/v1/providers/"
         request.META["QUERY_STRING"] = ""
         user = User()
-        user.username = user_data["username"]
+        user.user_id = user_data["user_id"]
         user.account = customer["account_id"]
         user.org_id = "45321"
         request.user = user
@@ -217,7 +217,7 @@ class IdentityHeaderMiddlewareTest(IdentityRequest):
         middleware = IdentityHeaderMiddleware(get_response=IdentityHeaderMiddleware.process_request)
         middleware.process_request(mock_request)
         self.assertTrue(hasattr(mock_request, "user"))
-        self.assertEqual(mock_request.user.username, self.user_data["username"])
+        self.assertEqual(mock_request.user.user_id, self.user_data["user_id"])
         if settings.AUTHENTICATE_WITH_ORG_ID:
             tenant = Tenant.objects.get(org_id=self.org_id)
         else:
@@ -246,7 +246,7 @@ class IdentityHeaderMiddlewareTest(IdentityRequest):
         """Test case where another request may create the tenant in a race condition."""
         mock_request = self.request
         mock_request.user = User()
-        mock_request.user.username = self.user_data["username"]
+        mock_request.user.user_id = self.user_data["user_id"]
         mock_request.user.account = self.customer_data["account_id"]
         orig_cust = IdentityHeaderMiddleware(get_response=IdentityHeaderMiddleware.get_tenant).get_tenant(
             model=None, hostname=None, request=mock_request
@@ -267,7 +267,7 @@ class IdentityHeaderMiddlewareTest(IdentityRequest):
         request.path = "/api/v1/providers/"
         request.META["QUERY_STRING"] = ""
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer["account_id"]
         user.org_id = "45321"
         request.user = user
@@ -400,12 +400,12 @@ class AccessHandlingTest(TestCase):
             "principal": {"read": [], "write": []},
             "permission": {"read": [], "write": []},
         }
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         self.assertEqual(expected, access)
 
     def test_principal_no_access(self):
         """Test access for existing principal with no access definitions."""
-        Principal.objects.create(username="test_user", tenant=self.tenant)
+        Principal.objects.create(user_id="123456", tenant=self.tenant)
         expected = {
             "group": {"read": [], "write": []},
             "role": {"read": [], "write": []},
@@ -413,12 +413,12 @@ class AccessHandlingTest(TestCase):
             "principal": {"read": [], "write": []},
             "permission": {"read": [], "write": []},
         }
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         self.assertEqual(expected, access)
 
     def test_principal_with_access_no_res_defs(self):
         """Test a user with defined access without any resource definitions."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group1", tenant=self.tenant)
         group.principals.add(principal)
         group.save()
@@ -428,7 +428,7 @@ class AccessHandlingTest(TestCase):
         policy = Policy.objects.create(name="policy1", group=group, tenant=self.tenant)
         policy.roles.add(role)
         policy.save()
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         expected = {
             "group": {"read": ["*"], "write": ["*"]},
             "role": {"read": [], "write": []},
@@ -440,7 +440,7 @@ class AccessHandlingTest(TestCase):
 
     def test_principal_with_access_with_res_defs(self):
         """Test a user with defined access with any resource definitions."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group1", tenant=self.tenant)
         group.principals.add(principal)
         group.save()
@@ -461,7 +461,7 @@ class AccessHandlingTest(TestCase):
         policy = Policy.objects.create(name="policy1", group=group, tenant=self.tenant)
         policy.roles.add(role)
         policy.save()
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         expected = {
             "group": {"read": ["*"], "write": ["*"]},
             "role": {"read": [], "write": []},
@@ -473,7 +473,7 @@ class AccessHandlingTest(TestCase):
 
     def test_principal_with_access_with_wildcard_op(self):
         """Test a user with defined access with wildcard operation."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group1", tenant=self.tenant)
         group.principals.add(principal)
         group.save()
@@ -492,7 +492,7 @@ class AccessHandlingTest(TestCase):
         policy = Policy.objects.create(name="policy1", group=group, tenant=self.tenant)
         policy.roles.add(role)
         policy.save()
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         expected = {
             "group": {"read": ["*"], "write": ["*"]},
             "role": {"read": [], "write": []},
@@ -504,7 +504,7 @@ class AccessHandlingTest(TestCase):
 
     def test_principal_with_access_with_wildcard_access(self):
         """Test a user with defined access with wildcard access."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group1", tenant=self.tenant)
         group.principals.add(principal)
         group.save()
@@ -514,7 +514,7 @@ class AccessHandlingTest(TestCase):
         policy = Policy.objects.create(name="policy1", group=group, tenant=self.tenant)
         policy.roles.add(role)
         policy.save()
-        access = IdentityHeaderMiddleware._get_access_for_user("test_user", self.tenant)
+        access = IdentityHeaderMiddleware._get_access_for_user("123456", self.tenant)
         expected = {
             "group": {"read": ["*"], "write": ["*"]},
             "role": {"read": ["*"], "write": ["*"]},

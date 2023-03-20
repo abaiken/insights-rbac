@@ -106,28 +106,28 @@ def _gather_group_querysets(request, args, kwargs):
         tenant=request.tenant
     ) or Group.platform_default_set().filter(tenant=public_tenant)
 
-    username = request.query_params.get("username")
-    exclude_username = request.query_params.get("exclude_username")
+    user_id = request.query_params.get("user_id")
+    exclude_user_id = request.query_params.get("exclude_user_id")
 
-    if username and exclude_username:
+    if user_id and exclude_user_id:
         key = "detail"
-        message = "Not possible to use both parameters [username, exclude_username]."
+        message = "Not possible to use both parameters [user_id, exclude_user_id]."
         raise serializers.ValidationError({key: _(message)})
 
-    if not username and kwargs:
-        username = kwargs.get("principals")
-    if username:
-        principal = get_principal(username, request)
+    if not user_id and kwargs:
+        user_id = kwargs.get("principals")
+    if user_id:
+        principal = get_principal(user_id, request)
         if principal.cross_account:
             return Group.objects.none()
         return (
-            filter_queryset_by_tenant(Group.objects.filter(principals__username__iexact=username), request.tenant)
+            filter_queryset_by_tenant(Group.objects.filter(principals__user_id__iexact=user_id), request.tenant)
             | default_group_set
         )
 
-    if exclude_username:
+    if exclude_user_id:
         return filter_queryset_by_tenant(
-            Group.objects.exclude(principals__username__iexact=exclude_username), request.tenant
+            Group.objects.exclude(principals__user_id__iexact=exclude_user_id), request.tenant
         )
 
     if has_group_all_access(request):
@@ -157,6 +157,7 @@ def get_role_queryset(request):
     )
 
     if scope != (ACCOUNT_SCOPE or ORG_ID_SCOPE):
+        print("\n\nactually in here: ")
         queryset = get_object_principal_queryset(
             request,
             scope,
@@ -168,18 +169,20 @@ def get_role_queryset(request):
             },
         )
         return annotate_roles_with_counts(queryset)
-
-    username = request.query_params.get("username")
-    if username:
+    print("\n\n\nwe are getting to this point ")
+    user_id = request.query_params.get("user_id")
+    if user_id:
         role_permission = RoleAccessPermission()
-
-        if username != request.user.username and not role_permission.has_permission(request=request, view=None):
+        print("user id: ")
+        print(user_id)
+        print(request.user.user_id)
+        if user_id != request.user.user_id and not role_permission.has_permission(request=request, view=None):
             return Role.objects.none()
         else:
             if settings.BYPASS_BOP_VERIFICATION:
                 is_org_admin = request.user.admin
             else:
-                is_org_admin = get_admin_from_proxy(username, request)
+                is_org_admin = get_admin_from_proxy(user_id, request)
 
             queryset = get_object_principal_queryset(
                 request,
@@ -240,13 +243,13 @@ def get_access_queryset(request):
         raise serializers.ValidationError({key: _(message)})
 
     app = request.query_params.get(APPLICATION_KEY)
-    # If we are querying on a username we need to check if the username is an org_admin
+    # If we are querying on a user_id we need to check if the user_id is an org_admin
     # not the user making the request
-    username = request.query_params.get("username")
-    if not username or settings.BYPASS_BOP_VERIFICATION:
+    user_id = request.query_params.get("user_id")
+    if not user_id or settings.BYPASS_BOP_VERIFICATION:
         is_org_admin = request.user.admin
     else:
-        is_org_admin = get_admin_from_proxy(username, request)
+        is_org_admin = get_admin_from_proxy(user_id, request)
 
     return get_object_principal_queryset(
         request,
@@ -263,6 +266,7 @@ def get_access_queryset(request):
 
 def get_object_principal_queryset(request, scope, clazz, **kwargs):
     """Get the query set for the specific object for principal scope."""
+    print("\n\ninside get_object_p")
     if scope not in VALID_SCOPES:
         key = "detail"
         message = "{} query parameter value {} is invalid. [{}] are valid inputs.".format(
@@ -271,21 +275,25 @@ def get_object_principal_queryset(request, scope, clazz, **kwargs):
         raise serializers.ValidationError({key: _(message)})
 
     if request.method not in permissions.SAFE_METHODS:
+        print("\n\nreturning early?")
         return clazz.objects.none()
 
     object_principal_func = PRINCIPAL_QUERYSET_MAP.get(clazz.__name__)
     principal = get_principal_from_request(request)
+    print("\n\n\nprincipal: ")
+    print(principal)
+    print(object_principal_func)
     objects = object_principal_func(principal, request.tenant, **kwargs)
     return queryset_by_id(objects, clazz, **kwargs)
 
 
 def _filter_admin_default(request, queryset):
     """Filter out admin default groups unless the principal is an org admin."""
-    username = request.query_params.get("username")
-    if not username or settings.BYPASS_BOP_VERIFICATION:
+    user_id = request.query_params.get("user_id")
+    if not user_id or settings.BYPASS_BOP_VERIFICATION:
         is_org_admin = request.user.admin
     else:
-        is_org_admin = get_admin_from_proxy(username, request)
+        is_org_admin = get_admin_from_proxy(user_id, request)
     # If the principal is an org admin, make sure they get any and all admin_default groups
     if is_org_admin:
         public_tenant = Tenant.objects.get(tenant_name="public")
@@ -300,7 +308,7 @@ def _filter_admin_default(request, queryset):
 
 def _filter_default_groups(request, queryset):
     """Filter out default access group and admin default group."""
-    exclude_username = request.query_params.get("exclude_username")
-    if exclude_username:
+    exclude_user_id = request.query_params.get("exclude_user_id")
+    if exclude_user_id:
         return queryset.exclude(platform_default=True).exclude(admin_default=True)
     return queryset

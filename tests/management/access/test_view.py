@@ -43,7 +43,7 @@ class AccessViewTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         user.org_id = self.customer_data["org_id"]
         request.user = user
@@ -65,7 +65,7 @@ class AccessViewTests(IdentityRequest):
             tenant_name="acct1111111", account_id="1111111", org_id=test_tenant_org_id, ready=True
         )
         self.test_tenant.save()
-        self.test_principal = Principal(username="test_user", tenant=self.test_tenant)
+        self.test_principal = Principal(user_id="123456", tenant=self.test_tenant)
         self.test_principal.save()
         self.test_group = Group(name="test_groupA", tenant=self.test_tenant)
         self.test_group.save()
@@ -73,16 +73,16 @@ class AccessViewTests(IdentityRequest):
         self.test_group.save()
         self.test_permission = Permission.objects.create(permission="app:test_*:test_*", tenant=self.test_tenant)
         Permission.objects.create(permission="app:test_foo:test_bar", tenant=self.test_tenant)
-        user_data = {"username": "test_user", "email": "test@gmail.com"}
+        user_data = {"user_id": "123456", "email": "test@gmail.com"}
         request_context = self._create_request_context(
             {"account_id": "1111111", "tenant_name": "acct1111111", "org_id": "100001"}, user_data, is_org_admin=True
         )
         request = request_context["request"]
         self.test_headers = request.META
 
-        self.principal = Principal(username=user.username, tenant=self.tenant)
+        self.principal = Principal(user_id=user.user_id, tenant=self.tenant)
         self.principal.save()
-        self.admin_principal = Principal(username="user_admin", tenant=self.tenant)
+        self.admin_principal = Principal(user_id="123457", tenant=self.tenant)
         self.admin_principal.save()
         self.group = Group(name="groupA", tenant=self.tenant)
         self.group.save()
@@ -243,11 +243,11 @@ class AccessViewTests(IdentityRequest):
         cross_account_request.roles.add(role)
 
         # Create cross_account principal and role, permission in the account
-        user_data = {"username": user_name, "email": "test@gmail.com"}
+        user_data = {"user_id": user_name, "email": "test@gmail.com"}
         request_context = self._create_request_context(self.customer_data, user_data, is_org_admin=False)
         request = request_context["request"]
         self.test_headers = request.META
-        Principal.objects.create(username=user_name, cross_account=True, tenant=self.tenant)
+        Principal.objects.create(user_id=user_name, cross_account=True, tenant=self.tenant)
 
         response = client.get(url, **self.test_headers)
 
@@ -267,7 +267,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -289,7 +289,7 @@ class AccessViewTests(IdentityRequest):
         access = Access.objects.create(role=role, permission=self.test_permission, tenant=self.test_tenant)
         self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
-        url = "{}?application=&username={}".format(reverse("access"), self.test_principal.username)
+        url = "{}?application=&user_id={}".format(reverse("access"), self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -308,7 +308,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -330,7 +330,7 @@ class AccessViewTests(IdentityRequest):
         access = Access.objects.create(role=role, permission=self.test_permission, tenant=self.test_tenant)
         self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
-        url = "{}?application={}&username={}".format(reverse("access"), "app,app2", "test_user")
+        url = "{}?application={}&user_id={}".format(reverse("access"), "app,app2", "123456")
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -347,7 +347,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -369,7 +369,7 @@ class AccessViewTests(IdentityRequest):
         access = Access.objects.create(role=role, permission=self.test_permission, tenant=self.test_tenant)
         self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
-        url = "{}?application={}&username={}".format(reverse("access"), "ap", self.test_principal.username)
+        url = "{}?application={}&user_id={}".format(reverse("access"), "ap", self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -388,7 +388,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -410,7 +410,7 @@ class AccessViewTests(IdentityRequest):
         access = Access.objects.create(role=role, permission=self.test_permission, tenant=self.test_tenant)
         self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
-        url = "{}?application={}&username={}".format(reverse("access"), "appfoo", self.test_principal.username)
+        url = "{}?application={}&user_id={}".format(reverse("access"), "appfoo", self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -431,7 +431,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -453,13 +453,13 @@ class AccessViewTests(IdentityRequest):
 
         tenant_name = self.test_tenant.tenant_name
         principal_id = self.test_principal.uuid
-        principal_username = self.test_principal.username
+        principal_user_id = self.test_principal.user_id
         key = f"rbac::policy::tenant={tenant_name}::user={principal_id}"
         client = APIClient()
 
         #### Sort by application ####
-        url = "{}?application=&username={}&order_by={}".format(
-            reverse("access"), self.test_principal.username, "application"
+        url = "{}?application=&user_id={}&order_by={}".format(
+            reverse("access"), self.test_principal.user_id, "application"
         )
         response = client.get(url, **self.test_headers)
 
@@ -472,8 +472,8 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["meta"]["count"], 2)
         self.assertEqual(response.data["data"][0]["permission"], "app:*:*")  # check order
 
-        url = "{}?application=&username={}&order_by={}".format(
-            reverse("access"), self.test_principal.username, "-application"
+        url = "{}?application=&user_id={}&order_by={}".format(
+            reverse("access"), self.test_principal.user_id, "-application"
         )
         response = client.get(url, **self.test_headers)
         get_policy.assert_called_with(principal_id, "&order:-application")
@@ -486,8 +486,8 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["data"][0]["permission"], "test:assigned:permission1")  # check order
 
         #### Sort by resource_type ####
-        url = "{}?application=&username={}&order_by={}".format(
-            reverse("access"), self.test_principal.username, "resource_type"
+        url = "{}?application=&user_id={}&order_by={}".format(
+            reverse("access"), self.test_principal.user_id, "resource_type"
         )
         response = client.get(url, **self.test_headers)
 
@@ -500,8 +500,8 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["meta"]["count"], 2)
         self.assertEqual(response.data["data"][0]["permission"], "app:*:*")  # check order
 
-        url = "{}?application=&username={}&order_by={}".format(
-            reverse("access"), self.test_principal.username, "-resource_type"
+        url = "{}?application=&user_id={}&order_by={}".format(
+            reverse("access"), self.test_principal.user_id, "-resource_type"
         )
         response = client.get(url, **self.test_headers)
         get_policy.assert_called_with(principal_id, "&order:-resource_type")
@@ -514,7 +514,7 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["data"][0]["permission"], "test:assigned:permission1")  # check order
 
         #### Sort by verb ####
-        url = "{}?application=&username={}&order_by={}".format(reverse("access"), self.test_principal.username, "verb")
+        url = "{}?application=&user_id={}&order_by={}".format(reverse("access"), self.test_principal.user_id, "verb")
         response = client.get(url, **self.test_headers)
 
         # Cache is called saved with sub_key ""
@@ -526,9 +526,7 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["meta"]["count"], 2)
         self.assertEqual(response.data["data"][0]["permission"], "app:*:*")  # check order
 
-        url = "{}?application=&username={}&order_by={}".format(
-            reverse("access"), self.test_principal.username, "-verb"
-        )
+        url = "{}?application=&user_id={}&order_by={}".format(reverse("access"), self.test_principal.user_id, "-verb")
         response = client.get(url, **self.test_headers)
         # Cache is called saved with sub_key ""
         get_policy.assert_called_with(principal_id, "&order:-verb")
@@ -541,7 +539,7 @@ class AccessViewTests(IdentityRequest):
         self.assertEqual(response.data["data"][0]["permission"], "test:assigned:permission1")  # check order
 
         #### Sort by nothing still works ####
-        url = "{}?application=&username={}&order_by=".format(reverse("access"), self.test_principal.username)
+        url = "{}?application=&user_id={}&order_by=".format(reverse("access"), self.test_principal.user_id)
         response = client.get(url, **self.test_headers)
         # Cache is called saved with sub_key ""
         get_policy.assert_called_with(principal_id, "")
@@ -561,7 +559,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -583,7 +581,7 @@ class AccessViewTests(IdentityRequest):
         access = Access.objects.create(role=role, permission=self.test_permission, tenant=self.test_tenant)
         self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
-        url = "{}?application={}&username={}".format(reverse("access"), "test_foo", self.test_principal.username)
+        url = "{}?application={}&user_id={}".format(reverse("access"), "test_foo", self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -602,7 +600,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -620,7 +618,7 @@ class AccessViewTests(IdentityRequest):
         response = self.create_policy(policy_name, self.test_group.uuid, [role_uuid], self.test_headers)
 
         # test that we can retrieve the principal access
-        url = "{}?application={}&username={}&limit=1".format(reverse("access"), "app", self.test_principal.username)
+        url = "{}?application={}&user_id={}&limit=1".format(reverse("access"), "app", self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -642,9 +640,9 @@ class AccessViewTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
         return_value={"status_code": 200, "data": []},
     )
-    def test_missing_invalid_username(self, mock_request):
+    def test_missing_invalid_user_id(self, mock_request):
         """Test that we get expected failure when missing required query params."""
-        url = "{}?application={}&username={}".format(reverse("access"), "app", "test_user")
+        url = "{}?application={}&user_id={}".format(reverse("access"), "app", "123456")
         client = APIClient()
         response = client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -661,7 +659,7 @@ class AccessViewTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -687,8 +685,8 @@ class AccessViewTests(IdentityRequest):
         client = APIClient()
 
         ######## access_policy are cached with desired sub_key ############
-        url = "{}?application={}&username={}&offset=1&limit=1".format(
-            reverse("access"), "app", self.test_principal.username
+        url = "{}?application={}&user_id={}&offset=1&limit=1".format(
+            reverse("access"), "app", self.test_principal.user_id
         )
         response = client.get(url, **self.test_headers)
 
@@ -704,7 +702,7 @@ class AccessViewTests(IdentityRequest):
         ###################################################################
 
         #### access_policy are cached properly when application is empty ####
-        url = "{}?application=&username={}&limit=1".format(reverse("access"), self.test_principal.username)
+        url = "{}?application=&user_id={}&limit=1".format(reverse("access"), self.test_principal.user_id)
         response = client.get(url, **self.test_headers)
 
         # Cache is called saved with sub_key ""
@@ -720,8 +718,8 @@ class AccessViewTests(IdentityRequest):
         """Test that get access with invalid ordering value raises 401."""
 
         client = APIClient()
-        url = "{}?application={}&username={}&order_by={}".format(
-            reverse("access"), "app", self.test_principal.username, "invalid_value"
+        url = "{}?application={}&user_id={}&order_by={}".format(
+            reverse("access"), "app", self.test_principal.user_id, "invalid_value"
         )
         response = client.get(url, **self.test_headers)
 

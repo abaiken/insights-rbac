@@ -128,8 +128,8 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
         return tenant
 
     @staticmethod  # noqa: C901
-    def _get_access_for_user(username, tenant):  # pylint: disable=too-many-locals,too-many-branches
-        """Obtain access data for given username.
+    def _get_access_for_user(user_id, tenant):  # pylint: disable=too-many-locals,too-many-branches
+        """Obtain access data for given user_id.
 
         Stubbed out to begin removal of RBAC on RBAC, with minimal disruption
         """
@@ -145,7 +145,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
         }
 
         try:  # pylint: disable=R1702
-            principal = Principal.objects.get(username__iexact=username, tenant=tenant)
+            principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
             kwargs = {APPLICATION_KEY: "rbac"}
             access_list = access_for_principal(principal, tenant, **kwargs)
             for access_item in access_list:  # pylint: disable=too-many-nested-blocks
@@ -207,7 +207,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
                 "internal"
             ).get("org_id")
             user_info = json_rh_auth.get("identity", {}).get("user")
-            user.username = user_info["username"]
+            user.user_id = user_info["user_id"]
             user.admin = user_info.get("is_org_admin")
             user.internal = user_info.get("is_internal")
             user.user_id = user_info.get("user_id")
@@ -228,7 +228,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
                         request.user = user
                         tenant = self.get_tenant(model=None, hostname=None, request=request)
 
-                    user.access = IdentityHeaderMiddleware._get_access_for_user(user.username, tenant)
+                    user.access = IdentityHeaderMiddleware._get_access_for_user(user.user_id, tenant)
             else:
                 if not user.admin and not (request.path.endswith("/access/") and request.method == "GET"):
                     try:
@@ -238,7 +238,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
                         request.user = user
                         tenant = self.get_tenant(model=None, hostname=None, request=request)
 
-                    user.access = IdentityHeaderMiddleware._get_access_for_user(user.username, tenant)
+                    user.access = IdentityHeaderMiddleware._get_access_for_user(user.user_id, tenant)
             # Cross account request check
             internal = json_rh_auth.get("identity", {}).get("internal", {})
             if internal != {}:
@@ -247,7 +247,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
                     if not (user.internal and user_info.get("email").endswith("@redhat.com")):
                         logger.error("Cross accout request permission denied. Requester is not internal user.")
                         return HttpResponseUnauthorizedRequest()
-                    user.username = f"{user.account}-{user.user_id}"
+                    user.user_id = f"{user.account}-{user.user_id}"
         except (KeyError, TypeError, JSONDecodeError):
             request_psk = request.META.get(RH_RBAC_PSK)
             account = request.META.get(RH_RBAC_ACCOUNT)
@@ -259,7 +259,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
                 has_system_auth_headers = request_psk and account and client_id
 
             if has_system_auth_headers and validate_psk(request_psk, client_id):
-                user.username = client_id
+                user.user_id = client_id
                 user.account = account
                 user.org_id = org_id
                 user.admin = True
@@ -270,7 +270,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
         except binascii.Error as error:
             logger.error("Could not decode header: %s.", error)
             raise error
-        if user.username and (user.account or user.org_id):
+        if user.user_id and (user.account or user.org_id):
             request.user = user
             request.tenant = self.get_tenant(model=None, hostname=None, request=request)
 
@@ -288,14 +288,14 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
         is_system = False
         account = None
         org_id = None
-        username = None
+        user_id = None
         req_id = getattr(request, "req_id", None)
         if request.META.get("QUERY_STRING"):
             query_string = "?{}".format(request.META.get("QUERY_STRING"))
 
         if hasattr(request, "user") and request.user:
-            username = request.user.username
-            if username:
+            user_id = request.user.user_id
+            if user_id:
                 # rbac.api.models.User has these fields
                 is_admin = request.user.admin
                 account = request.user.account
@@ -341,7 +341,7 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
             "request_id": req_id,
             "account": account,
             "org_id": org_id,
-            "username": username,
+            "user_id": user_id,
             "is_admin": is_admin,
             "is_system": is_system,
             "is_internal": is_internal,

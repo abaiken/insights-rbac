@@ -107,9 +107,9 @@ class GroupAccessPermissionTest(TestCase):
             "role": {"read": [], "write": []},
             "policy": {"read": [], "write": []},
         }
-        identity_header = {"decoded": {"identity": {"user": {"username": "test_user"}}}}
-        user = Mock(spec=User, admin=False, access=access, username="test_user")
-        req = Mock(user=user, method="GET", query_params={"username": "test_user"})
+        identity_header = {"decoded": {"identity": {"user": {"user_id": "123456"}}}}
+        user = Mock(spec=User, admin=False, access=access, user_id="123456")
+        req = Mock(user=user, method="GET", query_params={"user_id": "123456"})
         accessPerm = GroupAccessPermission()
         result = accessPerm.has_permission(request=req, view=None)
         self.assertTrue(result)
@@ -121,9 +121,9 @@ class GroupAccessPermissionTest(TestCase):
             "role": {"read": [], "write": []},
             "policy": {"read": [], "write": []},
         }
-        identity_header = {"identity": {"user": {"username": "test_user"}}}
-        user = Mock(spec=User, admin=False, access=access, username="test_user")
-        req = Mock(user=user, method="GET", query_params={"username": "test_user2"})
+        identity_header = {"identity": {"user": {"user_id": "111111"}}}
+        user = Mock(spec=User, admin=False, access=access, user_id="111111")
+        req = Mock(user=user, method="GET", query_params={"user_id": "222222"})
         accessPerm = GroupAccessPermission()
         result = accessPerm.has_permission(request=req, view=None)
         self.assertFalse(result)

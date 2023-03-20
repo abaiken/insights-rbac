@@ -69,6 +69,6 @@ def get_cross_principal_name(target_account, user_id):
 def create_principal_with_tenant(principal_name, associate_tenant):
     """Create cross-account principal in tenant."""
     cross_account_principal, _ = Principal.objects.get_or_create(
-        username=principal_name, cross_account=True, tenant=associate_tenant
+        cross_account=True, tenant=associate_tenant, user_id=principal_name
     )
     return cross_account_principal

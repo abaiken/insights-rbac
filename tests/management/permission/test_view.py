@@ -38,7 +38,7 @@ class PermissionViewsetTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         request.user = user
 
@@ -511,7 +511,7 @@ class PermissionViewsetTestsNonAdmin(IdentityRequest):
         access = Access.objects.create(permission=permission, role=admin_role, tenant=self.tenant)
         policy.roles.add(admin_role)
         # Add principal to that admin group
-        principal = Principal.objects.create(username=self.user_data["username"], tenant=self.tenant)
+        principal = Principal.objects.create(user_id=self.user_data["user_id"], tenant=self.tenant)
         group.principals.add(principal)
         group.principals
         response = CLIENT.get(LIST_URL, **self.headers)

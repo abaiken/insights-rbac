@@ -35,7 +35,7 @@ class UtilsTests(IdentityRequest):
         super().setUp()
 
         # setup principal
-        self.principal = Principal.objects.create(username="principalA", tenant=self.tenant)
+        self.principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
 
         # setup data for the principal
         self.roleA = Role.objects.create(name="roleA", tenant=self.tenant)

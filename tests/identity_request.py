@@ -69,7 +69,7 @@ class IdentityRequest(TestCase):
     @classmethod
     def _create_user_data(cls):
         """Create user data."""
-        user_data = {"username": cls.fake.user_name(), "email": cls.fake.email()}
+        user_data = {"user_id": cls.fake.ean8(), "email": cls.fake.email()}
         return user_data
 
     @classmethod
@@ -124,10 +124,9 @@ class IdentityRequest(TestCase):
         identity = {"identity": {"account_number": account, "org_id": org_id}}
         if user_data is not None:
             identity["identity"]["user"] = {
-                "username": user_data.get("username"),
+                "user_id": user_data.get("user_id"),
                 "email": user_data.get("email"),
                 "is_org_admin": is_org_admin,
-                "user_id": "1111111",
             }
 
         if is_internal:

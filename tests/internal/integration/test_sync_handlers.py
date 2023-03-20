@@ -43,8 +43,8 @@ class ExternalSyncTest(TestCase):
     def setUp(self):
         """Set up Sync tests."""
         super().setUp()
-        self.principal_a = Principal.objects.create(username="principal_a", tenant=self.tenant)
-        self.principal_b = Principal.objects.create(username="principal_b", tenant=self.tenant)
+        self.principal_a = Principal.objects.create(user_id="123456", tenant=self.tenant)
+        self.principal_b = Principal.objects.create(user_id="123457", tenant=self.tenant)
         self.group_a = Group.objects.create(name="group_a", platform_default=True, tenant=self.tenant)
         self.group_b = Group.objects.create(name="group_b", tenant=self.tenant)
         self.policy_a = Policy.objects.create(name="policy_a", tenant=self.tenant)

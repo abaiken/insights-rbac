@@ -25,19 +25,21 @@ from .model import Principal
 class PrincipalSerializer(SerializerCreateOverrideMixin, serializers.ModelSerializer):
     """Serializer for the Principal model."""
 
+    user_id = serializers.IntegerField(read_only=True)
+
     class Meta:
         """Metadata for the serializer."""
 
         model = Principal
-        fields = ("username",)
+        fields = ("user_id",)
 
 
 class PrincipalInputSerializer(serializers.Serializer):
     """Serializer for the Principal model."""
 
-    username = serializers.CharField(required=True, max_length=150)
+    user_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         """Metadata for the serializer."""
 
-        fields = ("username",)
+        fields = ("user_id",)

@@ -51,7 +51,7 @@ class RoleViewsetTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         request.user = user
 
@@ -85,10 +85,10 @@ class RoleViewsetTests(IdentityRequest):
 
         self.test_tenant = Tenant(tenant_name="acct1111111", account_id="1111111", org_id="100001", ready=True)
         self.test_tenant.save()
-        self.test_principal = Principal(username="test_user", tenant=self.test_tenant)
+        self.test_principal = Principal(user_id="123456", tenant=self.test_tenant)
         self.test_principal.save()
 
-        user_data = {"username": "test_user", "email": "test@gmail.com"}
+        user_data = {"user_id": "123456", "email": "test@gmail.com"}
         request_context = self._create_request_context(
             {"account_id": "1111111", "tenant_name": "acct1111111", "org_id": "100001"}, user_data, is_org_admin=True
         )
@@ -115,7 +115,7 @@ class RoleViewsetTests(IdentityRequest):
         self.test_policy.roles.add(self.test_defRole, self.test_sysRole, self.test_adminRole)
         self.test_policy.save()
 
-        self.principal = Principal(username=self.user_data["username"], tenant=self.tenant)
+        self.principal = Principal(user_id=self.user_data["user_id"], tenant=self.tenant)
         self.principal.save()
         self.policy = Policy.objects.create(name="policyA", tenant=self.tenant)
         self.group = Group(name="groupA", description="groupA description", tenant=self.tenant)
@@ -222,7 +222,7 @@ class RoleViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": role.name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(role.uuid),
                             },
                         }
@@ -657,7 +657,7 @@ class RoleViewsetTests(IdentityRequest):
         )
         non_admin_request = non_admin_request_context["request"]
 
-        url = "{}?username={}".format(URL, self.user_data["username"])
+        url = "{}?user_id={}".format(URL, self.user_data["user_id"])
         client = APIClient()
         response = client.get(url, **non_admin_request.META)
 
@@ -669,7 +669,7 @@ class RoleViewsetTests(IdentityRequest):
     )
     def test_list_role_fail_with_invalid_username(self, mock_request):
         """Test that non admin can not read a list of roles for username."""
-        url = "{}?username={}".format(URL, "foo")
+        url = "{}?user_id={}".format(URL, "foo")
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -685,7 +685,7 @@ class RoleViewsetTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -700,7 +700,7 @@ class RoleViewsetTests(IdentityRequest):
         new_display_fields.add(field_1)
         new_display_fields.add(field_2)
 
-        url = "{}?add_fields={},{}&username={}".format(URL, field_1, field_2, self.test_principal.username)
+        url = "{}?add_fields={},{}&user_id={}".format(URL, field_1, field_2, self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
 
@@ -869,7 +869,7 @@ class RoleViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": updated_name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": response.data.get("uuid"),
                             },
                         }
@@ -1020,7 +1020,7 @@ class RoleViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": role_name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": role_uuid,
                             },
                         }

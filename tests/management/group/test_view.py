@@ -40,7 +40,7 @@ class GroupViewsetTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         user.org_id = self.customer_data["org_id"]
         user.admin = True
@@ -58,13 +58,13 @@ class GroupViewsetTests(IdentityRequest):
             tenant_name="acct1111111", account_id="1111111", org_id=test_tenant_org_id, ready=True
         )
         self.test_tenant.save()
-        self.test_principal = Principal(username="test_user", tenant=self.test_tenant)
+        self.test_principal = Principal(user_id="123456", tenant=self.test_tenant)
         self.test_principal.save()
-        self.test_principalB = Principal(username="mock_user", tenant=self.test_tenant)
+        self.test_principalB = Principal(user_id="123457", tenant=self.test_tenant)
         self.test_principalB.save()
-        self.test_principalC = Principal(username="user_not_attaced_to_group_explicitly", tenant=self.test_tenant)
+        self.test_principalC = Principal(user_id="123458", tenant=self.test_tenant)
         self.test_principalC.save()
-        user_data = {"username": "test_user", "email": "test@gmail.com"}
+        user_data = {"user_id": "test_user", "email": "test@gmail.com"}
         test_request_context = self._create_request_context(
             {"account_id": "1111111", "tenant_name": "acct1111111", "org_id": test_tenant_org_id},
             user_data,
@@ -74,11 +74,11 @@ class GroupViewsetTests(IdentityRequest):
         self.test_headers = test_request.META
 
         self.public_tenant = Tenant.objects.get(tenant_name="public")
-        self.principal = Principal(username=self.user_data["username"], tenant=self.tenant)
+        self.principal = Principal(user_id=self.user_data["user_id"], tenant=self.tenant)
         self.principal.save()
-        self.principalB = Principal(username="mock_user", tenant=self.tenant)
+        self.principalB = Principal(user_id="1111111", tenant=self.tenant)
         self.principalB.save()
-        self.principalC = Principal(username="user_not_attaced_to_group_explicitly", tenant=self.tenant)
+        self.principalC = Principal(user_id="2222222", tenant=self.tenant)
         self.principalC.save()
         self.group = Group(name="groupA", tenant=self.tenant)
         self.group.save()
@@ -184,7 +184,7 @@ class GroupViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": group_name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(group.uuid),
                             },
                         }
@@ -566,7 +566,7 @@ class GroupViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": updated_name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(self.group.uuid),
                             },
                         }
@@ -602,19 +602,19 @@ class GroupViewsetTests(IdentityRequest):
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     def test_add_group_principals_admin_default(self, mock_request):
         """Test that adding a principal to a group returns successfully."""
         # Create a group and a cross account user.
         cross_account_user = Principal.objects.create(
-            username="cross_account_user", cross_account=True, tenant=self.tenant
+            user_id="cross_account_user", cross_account=True, tenant=self.tenant
         )
 
         url = reverse("group-principals", kwargs={"uuid": self.adminGroup.uuid})
         client = APIClient()
-        username = "test_user"
-        test_data = {"principals": [{"username": username}, {"username": "cross_account_user"}]}
+        user_id = "test_user"
+        test_data = {"principals": [{"user_id": user_id}, {"user_id": "cross_account_user"}]}
         response = client.post(url, test_data, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -663,7 +663,7 @@ class GroupViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": self.group.name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(self.group.uuid),
                             },
                         }
@@ -742,8 +742,8 @@ class GroupViewsetTests(IdentityRequest):
         """Test that adding a principal to a group returns the proper response on failure."""
         url = reverse("group-principals", kwargs={"uuid": self.group.uuid})
         client = APIClient()
-        new_username = uuid4()
-        test_data = {"principals": [{"username": self.principal.username}, {"username": new_username}]}
+        new_user_id = uuid4()
+        test_data = {"principals": [{"user_id": self.principal.user_id}, {"user_id": new_user_id}]}
         response = client.post(url, test_data, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(response.data[0]["detail"], "Unexpected error.")
@@ -754,7 +754,7 @@ class GroupViewsetTests(IdentityRequest):
         """Test that adding a principal to a group with an invalid GUID causes a 400."""
         url = reverse("group-principals", kwargs={"uuid": "invalid_guid"})
         client = APIClient()
-        test_data = {"principals": [{"username": self.principal.username}]}
+        test_data = {"principals": [{"user_id": self.principal.user_id}]}
         response = client.post(url, test_data, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -766,14 +766,14 @@ class GroupViewsetTests(IdentityRequest):
         """Test that adding a non-existing principal into existing group causes a 404"""
         url = reverse("group-principals", kwargs={"uuid": self.group.uuid})
         client = APIClient()
-        test_data = {"principals": [{"username": "not_existing_username"}]}
+        test_data = {"principals": [{"user_id": "not_existing_user_id"}]}
 
         response = client.post(url, test_data, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_add_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "555555"}]},
     )
     @patch("core.kafka.RBACProducer.send_kafka_message")
     def test_add_group_principals_success(self, send_kafka_message, mock_request):
@@ -782,7 +782,7 @@ class GroupViewsetTests(IdentityRequest):
         with self.settings(NOTIFICATIONS_ENABLED=True):
             test_group = Group.objects.create(name="test", tenant=self.tenant)
             cross_account_user = Principal.objects.create(
-                username="cross_account_user", cross_account=True, tenant=self.tenant
+                user_id="444444", cross_account=True, tenant=self.tenant
             )
 
             if settings.AUTHENTICATE_WITH_ORG_ID:
@@ -792,16 +792,16 @@ class GroupViewsetTests(IdentityRequest):
 
             url = reverse("group-principals", kwargs={"uuid": test_group.uuid})
             client = APIClient()
-            username = "test_add_user"
-            test_data = {"principals": [{"username": username}, {"username": cross_account_user.username}]}
+            user_id = "555555"
+            test_data = {"principals": [{"user_id": user_id}, {"user_id": cross_account_user.user_id}]}
 
             response = client.post(url, test_data, format="json", **self.headers)
-            principal = Principal.objects.get(username=username)
+            principal = Principal.objects.get(user_id=user_id)
 
             # Only the user exists in IT will be added to the group.
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data.get("principals")), 1)
-            self.assertEqual(response.data.get("principals")[0], {"username": username})
+            self.assertEqual(response.data.get("principals")[0], {"user_id": user_id})
             self.assertEqual(principal.tenant, self.tenant)
 
             send_kafka_message.assert_called_with(
@@ -817,10 +817,10 @@ class GroupViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": test_group.name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(test_group.uuid),
                                 "operation": "added",
-                                "principal": username,
+                                "principal": user_id,
                             },
                         }
                     ],
@@ -863,8 +863,8 @@ class GroupViewsetTests(IdentityRequest):
     def test_get_group_principals_nonempty(self, mock_request):
         """Test that getting principals from a nonempty group returns successfully."""
         mock_request.return_value["data"] = [
-            {"username": self.principal.username},
-            {"username": self.principalB.username},
+            {"user_id": self.principal.user_id},
+            {"user_id": self.principalB.user_id},
         ]
 
         client = APIClient()
@@ -873,25 +873,25 @@ class GroupViewsetTests(IdentityRequest):
         response = client.get(url, **self.headers)
 
         call_args, kwargs = mock_request.call_args_list[0]
-        username_arg = call_args[0]
+        user_id_arg = call_args[0]
 
-        for username in [self.principal.username, self.principalB.username]:
-            self.assertTrue(username in username_arg)
+        for user_id in [self.principal.user_id, self.principalB.user_id]:
+            self.assertTrue(int(user_id) in user_id_arg)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data.get("meta").get("count"), 2)
-        self.assertEqual(response.data.get("data")[0].get("username"), self.principal.username)
-        self.assertEqual(response.data.get("data")[1].get("username"), self.principalB.username)
+        self.assertEqual(response.data.get("data")[0].get("user_id"), self.principal.user_id)
+        self.assertEqual(response.data.get("data")[1].get("user_id"), self.principalB.user_id)
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     @patch("core.kafka.RBACProducer.send_kafka_message")
     def test_remove_group_principals_success(self, send_kafka_message, mock_request):
         """Test that removing a principal to a group returns successfully."""
         with self.settings(NOTIFICATIONS_ENABLED=True):
-            test_user = Principal.objects.create(username="test_user", tenant=self.tenant)
+            test_user = Principal.objects.create(user_id="123459", tenant=self.tenant)
             self.group.principals.add(test_user)
 
             url = reverse("group-principals", kwargs={"uuid": self.group.uuid})
@@ -902,7 +902,7 @@ class GroupViewsetTests(IdentityRequest):
             else:
                 org_id = None
 
-            url = "{}?usernames={}".format(url, "test_user")
+            url = "{}?user_ids={}".format(url, "123459")
             response = client.delete(url, format="json", **self.headers)
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -919,10 +919,10 @@ class GroupViewsetTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": self.group.name,
-                                "username": self.user_data["username"],
+                                "user_id": self.user_data["user_id"],
                                 "uuid": str(self.group.uuid),
                                 "operation": "removed",
-                                "principal": test_user.username,
+                                "principal": test_user.user_id,
                             },
                         }
                     ],
@@ -955,24 +955,24 @@ class GroupViewsetTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
             ],
         },
     )
-    def test_get_group_by_username(self, mock_request):
+    def test_get_group_by_user_id(self, mock_request):
         """Test that getting groups for a principal returns successfully."""
         url = reverse("group-list")
-        url = "{}?username={}".format(url, self.test_principal.username)
+        url = "{}?user_id={}".format(url, self.test_principal.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.data.get("meta").get("count"), 4)
 
         # Return bad request when user does not exist
         url = reverse("group-list")
-        url = "{}?username={}".format(url, uuid4())
+        url = "{}?user_id={}".format(url, uuid4())
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -987,20 +987,22 @@ class GroupViewsetTests(IdentityRequest):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_not_attaced_to_group_explicitly",
+                    "user_id": "2222222",
                     "account_number": "1111111",
                     "is_active": True,
                 }
             ],
         },
     )
-    def test_get_group_by_username_no_assigned_group(self, mock_request):
+    def test_get_group_by_user_id_no_assigned_group(self, mock_request):
         """Test that getting groups for a principal not assigned to a group returns successfully."""
         # User who is not added to a group explicitly will return platform default group
         url = reverse("group-list")
-        url = "{}?username={}".format(url, self.principalC.username)
+        url = "{}?user_id={}".format(url, self.principalC.user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
+        print("\n\n\nDEBUG: response")
+        print(response)
         self.assertEqual(response.data.get("meta").get("count"), 2)
 
     @patch(
@@ -1013,19 +1015,19 @@ class GroupViewsetTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_not_attaced_to_group_explicitly",
+                    "user_id": "2222222",
                     "account_number": "1111111",
                     "is_active": True,
                 }
             ],
         },
     )
-    def test_get_group_by_username_for_cross_account_principal(self, mock_request):
+    def test_get_group_by_user_id_for_cross_account_principal(self, mock_request):
         """Test that getting groups for a cross account principal won't have platform default group."""
         self.test_principalC.cross_account = True
         self.test_principalC.save()
         url = reverse("group-list")
-        url = "{}?username={}".format(url, self.test_principalC.username)
+        url = "{}?user_id={}".format(url, self.test_principalC.user_id)
         client = APIClient()
 
         # User who is not added to a group explicitly will not return platform default group if he is cross account principal.
@@ -1042,18 +1044,18 @@ class GroupViewsetTests(IdentityRequest):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
             ],
         },
     )
-    def test_get_group_by_username_with_capitalization(self, mock_request):
+    def test_get_group_by_user_id_with_capitalization(self, mock_request):
         """Test that getting groups for a user name with capitalization returns successfully."""
         url = reverse("group-list")
-        username = "".join(random.choice([k.upper(), k]) for k in self.test_principal.username)
-        url = "{}?username={}".format(url, username)
+        user_id = "".join(random.choice([k.upper(), k]) for k in self.test_principal.user_id)
+        url = "{}?user_id={}".format(url, user_id)
         client = APIClient()
         response = client.get(url, **self.test_headers)
         self.assertEqual(response.data.get("meta").get("count"), 4)
@@ -1284,85 +1286,85 @@ class GroupViewsetTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
         return_value={"status_code": 200, "data": []},
     )
-    def test_principal_username_filter_for_group_roles_no_match(self, mock_request):
-        """Test principal_username filter for getting principals for a group."""
+    def test_principal_user_id_filter_for_group_roles_no_match(self, mock_request):
+        """Test principal_user_id filter for getting principals for a group."""
         url = reverse("group-principals", kwargs={"uuid": self.group.uuid})
-        url = "{}?principal_username=test".format(url)
+        url = "{}?principal_user_id=test".format(url)
         client = APIClient()
         response = client.get(url, **self.headers)
         principals = response.data.get("data")
 
         if settings.AUTHENTICATE_WITH_ORG_ID:
             mock_request.assert_called_with(
-                [], options={"sort_order": None, "username_only": "false"}, org_id=self.customer_data["org_id"]
+                [], options={"sort_order": None, "user_id_only": "false"}, org_id=self.customer_data["org_id"]
             )
         else:
             mock_request.assert_called_with(
-                [], account=self.customer_data["account_id"], options={"sort_order": None, "username_only": "false"}
+                [], account=self.customer_data["account_id"], options={"sort_order": None, "user_id_only": "false"}
             )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(principals), 0)
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "212345"}]},
     )
-    def test_principal_username_filter_for_group_roles_match(self, mock_request):
-        """Test principal_username filter for getting principals for a group."""
+    def test_principal_user_id_filter_for_group_roles_match(self, mock_request):
+        """Test principal_user_id filter for getting principals for a group."""
         url = reverse("group-principals", kwargs={"uuid": self.group.uuid})
-        url = "{}?principal_username={}".format(url, self.principal.username)
+        url = "{}?principal_user_id={}".format(url, self.principal.user_id)
         client = APIClient()
         response = client.get(url, **self.headers)
         principals = response.data.get("data")
 
         if settings.AUTHENTICATE_WITH_ORG_ID:
             mock_request.assert_called_with(
-                [self.principal.username],
-                options={"sort_order": None, "username_only": "false"},
+                [int(self.principal.user_id)],
+                options={"sort_order": None, "user_id_only": "false"},
                 org_id=self.customer_data["org_id"],
             )
         else:
             mock_request.assert_called_with(
-                [self.principal.username],
+                [self.principal.user_id],
                 account=self.customer_data["account_id"],
-                options={"sort_order": None, "username_only": "false"},
+                options={"sort_order": None, "user_id_only": "false"},
             )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(principals), 1)
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
-    def test_principal_get_ordering_username_success(self, mock_request):
-        """Test that passing a username order_by parameter calls the proxy correctly."""
-        url = f"{reverse('group-principals', kwargs={'uuid': self.group.uuid})}?order_by=username"
+    def test_principal_get_ordering_user_id_success(self, mock_request):
+        """Test that passing a user_id order_by parameter calls the proxy correctly."""
+        url = f"{reverse('group-principals', kwargs={'uuid': self.group.uuid})}?order_by=user_id"
         client = APIClient()
         response = client.get(url, **self.headers)
         principals = response.data.get("data")
-        expected_principals = sorted([self.principal.username, self.principalB.username])
+        expected_principals = sorted([int(self.principal.user_id), int(self.principalB.user_id)])
 
         if settings.AUTHENTICATE_WITH_ORG_ID:
             mock_request.assert_called_with(
                 expected_principals,
-                options={"sort_order": "asc", "username_only": "false"},
+                options={"sort_order": "asc", "user_id_only": "false"},
                 org_id=self.customer_data["org_id"],
             )
         else:
             mock_request.assert_called_with(
                 expected_principals,
                 account=self.customer_data["account_id"],
-                options={"sort_order": "asc", "username_only": "false"},
+                options={"sort_order": "asc", "user_id_only": "false"},
             )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(principals), 1)
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
-    def test_principal_get_ordering_nonusername_fail(self, mock_request):
-        """Test that passing a username order_by parameter calls the proxy correctly."""
+    def test_principal_get_ordering_nonuser_id_fail(self, mock_request):
+        """Test that passing a user_id order_by parameter calls the proxy correctly."""
         url = f"{reverse('group-principals', kwargs={'uuid': self.group.uuid})}?order_by=best_joke"
         client = APIClient()
         response = client.get(url, **self.headers)
@@ -1452,7 +1454,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": custom_default_group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(custom_default_group.uuid),
                                 },
                             }
@@ -1474,7 +1476,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": custom_default_group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(custom_default_group.uuid),
                                     "operation": "added",
                                     "role": {"uuid": str(self.roleB.uuid), "name": self.roleB.name},
@@ -1540,7 +1542,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": custom_default_group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(custom_default_group.uuid),
                                 },
                             }
@@ -1562,7 +1564,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": custom_default_group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(custom_default_group.uuid),
                                     "operation": "removed",
                                     "role": {"uuid": str(default_role.uuid), "name": default_role.name},
@@ -1664,7 +1666,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": groupC.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(groupC.uuid),
                                     "operation": "added",
                                     "role": {"uuid": str(self.role.uuid), "name": self.role.name},
@@ -1688,7 +1690,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": groupC.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(groupC.uuid),
                                     "operation": "added",
                                     "role": {"uuid": str(self.roleB.uuid), "name": self.roleB.name},
@@ -1791,7 +1793,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": self.group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(self.group.uuid),
                                     "operation": "removed",
                                     "role": {"uuid": str(self.role.uuid), "name": self.role.name},
@@ -1815,7 +1817,7 @@ class GroupViewsetTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": self.group.name,
-                                    "username": self.user_data["username"],
+                                    "user_id": self.user_data["user_id"],
                                     "uuid": str(self.group.uuid),
                                     "operation": "removed",
                                     "role": {"uuid": str(self.roleB.uuid), "name": self.roleB.name},
@@ -1897,6 +1899,7 @@ class GroupViewNonAdminTests(IdentityRequest):
         super().setUp()
         self.dummy_role_id = uuid4()
         self.user_data = self._create_user_data()
+        self.user_data["user_id"] = "212345"
         self.customer = self._create_customer_data()
         self.request_context = self._create_request_context(self.customer, self.user_data, is_org_admin=False)
 
@@ -1907,9 +1910,9 @@ class GroupViewNonAdminTests(IdentityRequest):
             "resourceDefinitions": [{"attributeFilter": {"key": "key1", "operation": "equal", "value": "value1"}}],
         }
 
-        self.principal = Principal(username=self.user_data["username"], tenant=self.tenant)
+        self.principal = Principal(user_id=self.user_data["user_id"], tenant=self.tenant)
         self.principal.save()
-        self.admin_principal = Principal(username="user_admin", tenant=self.tenant)
+        self.admin_principal = Principal(user_id="user_admin", tenant=self.tenant)
         self.admin_principal.save()
         self.group = Group(name="groupA", tenant=self.tenant)
         self.group.save()

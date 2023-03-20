@@ -329,10 +329,10 @@ def obtain_applications(obj):
 def obtain_groups_in(obj, request):
     """Shared function to get the groups the roles is in."""
     scope_param = request.query_params.get("scope")
-    username_param = request.query_params.get("username")
+    user_id_param = request.query_params.get("user_id")
     policy_ids = list(obj.policies.values_list("id", flat=True))
 
-    if scope_param == "principal" or username_param:
+    if scope_param == "principal" or user_id_param:
         principal = get_principal_from_request(request)
         assigned_groups = Group.objects.filter(policies__in=policy_ids, principals__in=[principal])
         assigned_groups = filter_queryset_by_tenant(assigned_groups, request.tenant)

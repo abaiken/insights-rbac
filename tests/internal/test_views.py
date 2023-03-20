@@ -51,7 +51,7 @@ class InternalViewsetTests(IdentityRequest):
 
         self.request = self.internal_request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         self.request.user = user
 

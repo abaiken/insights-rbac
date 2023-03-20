@@ -25,7 +25,7 @@ from api.common.pagination import StandardResultsSetPagination
 from .proxy import PrincipalProxy
 from ..permissions.principal_access import PrincipalAccessPermission
 
-USERNAMES_KEY = "usernames"
+USER_IDS_KEY = "user_ids"
 EMAIL_KEY = "email"
 SORTORDER_KEY = "sort_order"
 VALID_SORTORDER_VALUE = ["asc", "desc"]
@@ -35,7 +35,7 @@ STATUS_KEY = "status"
 VALID_STATUS_VALUE = ["enabled", "disabled", "all"]
 ADMIN_ONLY_KEY = "admin_only"
 VALID_BOOLEAN_VALUE = ["true", "false"]
-USERNAME_ONLY_KEY = "username_only"
+USER_ID_ONLY_KEY = "user_id_only"
 
 
 class PrincipalView(APIView):
@@ -91,7 +91,7 @@ class PrincipalView(APIView):
         path = request.path
         query_params = request.query_params
         default_limit = StandardResultsSetPagination.default_limit
-        usernames_filter = ""
+        user_ids_filter = ""
         options = {}
         try:
             limit = int(query_params.get("limit", default_limit))
@@ -111,7 +111,7 @@ class PrincipalView(APIView):
         if offset - limit > 0:
             previous_offset = offset - limit
 
-        resp, usernames_filter = self.users_from_proxy(user, query_params, options, limit, offset)
+        resp, user_ids_filter = self.users_from_proxy(user, query_params, options, limit, offset)
 
         status_code = resp.get("status_code")
         response_data = {}
@@ -126,9 +126,9 @@ class PrincipalView(APIView):
                 count = None
             response_data["meta"] = {"count": count}
             response_data["links"] = {
-                "first": f"{path}?limit={limit}&offset=0{usernames_filter}",
-                "next": f"{path}?limit={limit}&offset={offset + limit}{usernames_filter}",
-                "previous": f"{path}?limit={limit}&offset={previous_offset}{usernames_filter}",
+                "first": f"{path}?limit={limit}&offset=0{user_ids_filter}",
+                "next": f"{path}?limit={limit}&offset={offset + limit}{user_ids_filter}",
+                "previous": f"{path}?limit={limit}&offset={previous_offset}{user_ids_filter}",
                 "last": None,
             }
             response_data["data"] = data
@@ -141,12 +141,12 @@ class PrincipalView(APIView):
     def users_from_proxy(self, user, query_params, options, limit, offset):
         """Format principal request for proxy and return prepped result."""
         proxy = PrincipalProxy()
-        usernames = query_params.get(USERNAMES_KEY)
+        user_ids = query_params.get(USER_IDS_KEY)
         email = query_params.get(EMAIL_KEY)
         match_criteria = validate_and_get_key(query_params, MATCH_CRITERIA_KEY, VALID_MATCH_VALUE, "exact")
-        options["username_only"] = validate_and_get_key(query_params, USERNAME_ONLY_KEY, VALID_BOOLEAN_VALUE, "false")
+        options["user_id_only"] = validate_and_get_key(query_params, USER_ID_ONLY_KEY, VALID_BOOLEAN_VALUE, "false")
 
-        if not usernames and not email:
+        if not user_ids and not email:
             options["admin_only"] = validate_and_get_key(query_params, ADMIN_ONLY_KEY, VALID_BOOLEAN_VALUE, "false")
             resp = proxy.request_principals(
                 account=user.account, org_id=user.org_id, limit=limit, offset=offset, options=options
@@ -154,8 +154,8 @@ class PrincipalView(APIView):
             return resp, ""
         proxyInput = {}
         resp = None
-        if usernames:
-            principals = usernames.split(",")
+        if user_ids:
+            principals = user_ids.split(",")
             if match_criteria != "partial":
                 resp = proxy.request_filtered_principals(
                     principals,
@@ -165,8 +165,8 @@ class PrincipalView(APIView):
                     offset=offset,
                     options=options,
                 )
-                usernames_filter = f"&usernames={usernames}"
-                return resp, usernames_filter
+                user_ids_filter = f"&user_ids={user_ids}"
+                return resp, user_ids_filter
             else:
                 proxyInput["principalStartsWith"] = principals[0]
         if email:

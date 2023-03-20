@@ -31,7 +31,7 @@ class IntegrationViewsTests(IdentityRequest):
     def setUp(self):
         """Set up the integration view tests."""
         test_roles = ["Role Admin", "Role A", "Role B"]
-        test_principals = ["user_admin", "user_a", "user_b"]
+        test_principals = ["123456", "123457", "123458"]
 
         super().setUp()
         self.client = APIClient()
@@ -42,12 +42,12 @@ class IntegrationViewsTests(IdentityRequest):
 
         self.request = self.internal_request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         self.request.user = user
 
-        for username in test_principals:
-            principal = Principal.objects.create(username=username, tenant=self.tenant)
+        for user_id in test_principals:
+            principal = Principal.objects.create(user_id=user_id, tenant=self.tenant)
             principal.save()
 
         for role_name in test_roles:
@@ -58,7 +58,7 @@ class IntegrationViewsTests(IdentityRequest):
 
         group = Group(name="Group Admin", system=True, tenant=self.tenant)
         group.save()
-        group.principals.add(Principal.objects.get(username="user_admin"))
+        group.principals.add(Principal.objects.get(user_id="123456"))
         policy = Policy.objects.create(name="Admin Policy", group=group, tenant=self.tenant)
         policy.roles.add(Role.objects.get(name="Role Admin"))
         policy.save()
@@ -68,7 +68,7 @@ class IntegrationViewsTests(IdentityRequest):
         group = Group(name="Group All", system=True, tenant=self.tenant)
         group.save()
         for principal in test_principals:
-            group.principals.add(Principal.objects.get(username=principal))
+            group.principals.add(Principal.objects.get(user_id=principal))
         policy = Policy.objects.create(name="All Policy", group=group, tenant=self.tenant)
         for role in test_roles:
             policy.roles.add(Role.objects.get(name=role))
@@ -77,8 +77,8 @@ class IntegrationViewsTests(IdentityRequest):
 
         group = Group(name="Group A", system=True, tenant=self.tenant)
         group.save()
-        group.principals.add(Principal.objects.get(username="user_admin"))
-        group.principals.add(Principal.objects.get(username="user_a"))
+        group.principals.add(Principal.objects.get(user_id="123456"))
+        group.principals.add(Principal.objects.get(user_id="123457"))
         policy = Policy.objects.create(name="A Policy", group=group, tenant=self.tenant)
         policy.roles.add(Role.objects.get(name="Role A"))
         group.policies.add(policy)
@@ -109,7 +109,7 @@ class IntegrationViewsTests(IdentityRequest):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_admin",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -117,9 +117,9 @@ class IntegrationViewsTests(IdentityRequest):
         },
     )
     def test_groups_valid_account(self, mock_request):
-        """Test that a request to /tenant/<id>/groups/?username= from an internal account works."""
+        """Test that a request to /tenant/<id>/groups/?user_id= from an internal account works."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?username=user_admin",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?user_id=123456",
             **self.request.META,
             follow=True,
         )
@@ -150,7 +150,7 @@ class IntegrationViewsTests(IdentityRequest):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_a",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -160,7 +160,7 @@ class IntegrationViewsTests(IdentityRequest):
     def test_groups_user_filter(self, mock_request):
         """Test that only the groups a user is a member of are returned for a /tenant/<id>/groups/?username= request."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?username=user_a",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?user_id=123457",
             **self.request.META,
             follow=True,
         )
@@ -179,7 +179,7 @@ class IntegrationViewsTests(IdentityRequest):
     def test_groups_nonexistent_user(self, mock_request):
         """Test that a request for groups of a nonexistent user returns 0."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?username=user_x",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?user_id=000000",
             **self.request.META,
             follow=True,
         )
@@ -188,7 +188,7 @@ class IntegrationViewsTests(IdentityRequest):
     def test_groups_for_principal_valid_account(self):
         """Test that a request to /tenant/<id>/principal/<username>/groups/ from an internal account works."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/user_admin/groups/",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/123456/groups/",
             **self.request.META,
             follow=True,
         )
@@ -203,7 +203,7 @@ class IntegrationViewsTests(IdentityRequest):
         )
         request = external_request_context["request"]
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/user_a/groups/",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/123457/groups/",
             **request.META,
             follow=True,
         )
@@ -219,7 +219,7 @@ class IntegrationViewsTests(IdentityRequest):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_a",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -227,9 +227,9 @@ class IntegrationViewsTests(IdentityRequest):
         },
     )
     def test_groups_for_principal_filter(self, mock_request):
-        """Test that only the groups a user is a member of are returned for a /tenant/<id>/groups/?username= request."""
+        """Test that only the groups a user is a member of are returned for a /tenant/<id>/groups/?user_id= request."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?username=user_a",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?user_id=123457",
             **self.request.META,
             follow=True,
         )
@@ -244,7 +244,7 @@ class IntegrationViewsTests(IdentityRequest):
     def test_groups_for_principal_nonexistant_user(self, mock_request):
         """Test that an error is return for nonexistant ."""
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?username=user_x",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/groups/?user_id=000000",
             **self.request.META,
             follow=True,
         )
@@ -295,7 +295,7 @@ class IntegrationViewsTests(IdentityRequest):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "user_a",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -330,7 +330,7 @@ class IntegrationViewsTests(IdentityRequest):
         """Test that a valid request to /tenant/<id>/principal/user_admin/groups/<uuid>/roles/ from an internal account works."""
         group_all_uuid = Group.objects.get(name="Group All").uuid
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/user_admin/groups/{group_all_uuid}/roles/",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/123456/groups/{group_all_uuid}/roles/",
             **self.request.META,
             follow=True,
         )
@@ -367,7 +367,7 @@ class IntegrationViewsTests(IdentityRequest):
         # user_a in Group A
         group_a_uuid = Group.objects.get(name="Group A").uuid
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/user_a/groups/{group_a_uuid}/roles/",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/123456/groups/{group_a_uuid}/roles/",
             **self.request.META,
             follow=True,
         )
@@ -378,7 +378,7 @@ class IntegrationViewsTests(IdentityRequest):
         # user_b not in Group A
         group_a_uuid = Group.objects.get(name="Group A").uuid
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/user_b/groups/{group_a_uuid}/roles/",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/principal/123458/groups/{group_a_uuid}/roles/",
             **self.request.META,
             follow=True,
         )
@@ -395,6 +395,7 @@ class IntegrationViewsTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "isolated_principal",
+                    "user_id": "123459",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -404,7 +405,7 @@ class IntegrationViewsTests(IdentityRequest):
     def test_roles_for_org(self, mock_request):
         """Test that a valid request to /tenant/<id>>/roles/ | /tenant/<id>>/roles/?username=foo filters properly."""
         isolated_role = Role.objects.create(name="isolated_role", tenant=self.tenant)
-        isolated_principal = Principal.objects.create(username="isolated_principal", tenant=self.tenant)
+        isolated_principal = Principal.objects.create(user_id="123459", tenant=self.tenant)
         isolated_group = Group.objects.create(name="isolated_group", tenant=self.tenant)
         isolated_policy = Policy.objects.create(name="isolated_policy", group=isolated_group, tenant=self.tenant)
         isolated_policy.roles.add(isolated_role)
@@ -419,7 +420,7 @@ class IntegrationViewsTests(IdentityRequest):
         self.assertEqual(response.data.get("meta").get("count"), 4)
 
         response = self.client.get(
-            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/roles/?username=isolated_principal",
+            f"/_private/api/v1/integrations/tenant/{self.tenant.org_id}/roles/?user_id=123459",
             **self.request.META,
             follow=True,
         )

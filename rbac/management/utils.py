@@ -30,7 +30,7 @@ from rest_framework import serializers, status
 from api.models import CrossAccountRequest, Tenant
 
 
-USERNAME_KEY = "username"
+USER_ID_KEY = "user_id"
 APPLICATION_KEY = "application"
 PRICIPAL_PERMISSION_INSTANCE = PrincipalAccessPermission()
 
@@ -50,58 +50,58 @@ def validate_psk(psk, client_id):
 
 def get_principal_from_request(request):
     """Obtain principal from the request object."""
-    current_user = request.user.username
-    qs_user = request.query_params.get(USERNAME_KEY)
-    username = current_user
+    current_user = request.user.user_id
+    qs_user = request.query_params.get(USER_ID_KEY)
+    user_id = current_user
     from_query = False
     if qs_user and not PRICIPAL_PERMISSION_INSTANCE.has_permission(request=request, view=None):
         raise PermissionDenied()
 
     if qs_user:
-        username = qs_user
+        user_id = qs_user
         from_query = True
 
-    return get_principal(username, request, verify_principal=bool(qs_user), from_query=from_query)
+    return get_principal(user_id, request, verify_principal=bool(qs_user), from_query=from_query)
 
 
-def get_principal(username, request, verify_principal=True, from_query=False):
-    """Get principals from username."""
+def get_principal(user_id, request, verify_principal=True, from_query=False):
+    """Get principals from user_id."""
     # First check if principal exist on our side,
     # if not call BOP to check if user exist in the account.
     tenant = request.tenant
     try:
-        # If the username was provided through a query we must verify if it is an org admin from the BOP
+        # If the user_id was provided through a query we must verify if it is an org admin from the BOP
         if from_query:
-            verify_principal_with_proxy(username, request, verify_principal=verify_principal)
-        principal = Principal.objects.get(username__iexact=username, tenant=tenant)
+            verify_principal_with_proxy(user_id, request, verify_principal=verify_principal)
+        principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
     except Principal.DoesNotExist:
-        verify_principal_with_proxy(username, request, verify_principal=verify_principal)
+        verify_principal_with_proxy(user_id, request, verify_principal=verify_principal)
 
         # Avoid possible race condition if the user was created while checking BOP
         principal, created = Principal.objects.get_or_create(
-            username=username, tenant=tenant
+            user_id=user_id, tenant=tenant
         )  # pylint: disable=unused-variable
 
     return principal
 
 
-def verify_principal_with_proxy(username, request, verify_principal=True):
-    """Verify username through the BOP."""
+def verify_principal_with_proxy(user_id, request, verify_principal=True):
+    """Verify user_id through the BOP."""
     account = request.user.account
     org_id = request.user.org_id
     proxy = PrincipalProxy()
     if verify_principal:
         if settings.AUTHENTICATE_WITH_ORG_ID:
-            resp = proxy.request_filtered_principals([username], org_id=org_id)
+            resp = proxy.request_filtered_principals([user_id], org_id=org_id)
         else:
-            resp = proxy.request_filtered_principals([username], account)
+            resp = proxy.request_filtered_principals([user_id], account)
 
         if isinstance(resp, dict) and "errors" in resp:
             raise Exception("Dependency error: request to get users from dependent service failed.")
 
         if not resp.get("data"):
             key = "detail"
-            message = "No data found for principal with username '{}'.".format(username)
+            message = "No data found for principal with user_id '{}'.".format(user_id)
             raise serializers.ValidationError({key: _(message)})
 
         return resp
@@ -110,6 +110,9 @@ def verify_principal_with_proxy(username, request, verify_principal=True):
 def policies_for_groups(groups):
     """Gathers all policies for the given groups."""
     policies = Policy.objects.filter(group__in=set(groups))
+    print(groups)
+    print("\n\n\npolicies")
+    print(policies)
     return set(policies)
 
 
@@ -131,9 +134,12 @@ def access_for_roles(roles, param_applications):
 
 def groups_for_principal(principal, tenant, **kwargs):
     """Gathers all groups for a principal, including the default."""
+    print("here? groups for principal")
     if principal.cross_account:
+        print("returning early")
         return set()
     assigned_group_set = principal.group.all()
+    print(assigned_group_set)
     public_tenant = Tenant.objects.get(tenant_name="public")
     platform_default_group_set = Group.platform_default_set().filter(
         tenant=tenant
@@ -149,8 +155,14 @@ def groups_for_principal(principal, tenant, **kwargs):
         platform_default_group_set = platform_default_group_set.prefetch_related(prefetch_lookups)
 
     if kwargs.get("is_org_admin"):
+        print("\n\n\nis org admin")
+        print(set(assigned_group_set))
+        print(platform_default_group_set)
+        print(admin_default_group_set)
         return set(assigned_group_set | platform_default_group_set | admin_default_group_set)
-
+    print("assigned group set and platform default:")
+    print(set(assigned_group_set))
+    print(platform_default_group_set)
     return set(assigned_group_set | platform_default_group_set)
 
 
@@ -163,6 +175,7 @@ def policies_for_principal(principal, tenant, **kwargs):
 def roles_for_principal(principal, tenant, **kwargs):
     """Gathers all roles for a principal."""
     if principal.cross_account:
+        print("inside cross account")
         return roles_for_cross_account_principal(principal)
     policies = policies_for_principal(principal, tenant, **kwargs)
     return roles_for_policies(policies)
@@ -242,7 +255,7 @@ def validate_limit_and_offset(query_params):
 
 def roles_for_cross_account_principal(principal):
     """Return roles for cross account principals."""
-    target_account, user_id = principal.username.split("-")
+    target_account, user_id = principal.user_id.split("-")
     target_org = principal.tenant.org_id
     if settings.AUTHENTICATE_WITH_ORG_ID:
         role_names = (
@@ -271,22 +284,22 @@ def account_id_for_tenant(tenant):
     return tenant.tenant_name.replace("acct", "")
 
 
-def get_admin_from_proxy(username, request):
-    """Return org_admin status of a username from the proxy."""
-    bop_resp = verify_principal_with_proxy(username, request, verify_principal=True)
+def get_admin_from_proxy(user_id, request):
+    """Return org_admin status of a user_id from the proxy."""
+    bop_resp = verify_principal_with_proxy(user_id, request, verify_principal=True)
 
     if bop_resp.get("data") == []:
         key = "detail"
-        message = "No data found for principal with username '{}'.".format(username)
+        message = "No data found for principal with user_id '{}'.".format(user_id)
         raise serializers.ValidationError({key: _(message)})
 
     index = next(
-        (i for i, x in enumerate(bop_resp.get("data")) if x["username"].casefold() == username.casefold()), None
+        (i for i, x in enumerate(bop_resp.get("data")) if x["user_id"].casefold() == user_id.casefold()), None
     )
 
     if index is None:
         key = "detail"
-        message = "No data found for principal with username '{}'.".format(username)
+        message = "No data found for principal with user_id '{}'.".format(user_id)
         raise serializers.ValidationError({key: _(message)})
 
     is_org_admin = bop_resp.get("data")[index]["is_org_admin"]

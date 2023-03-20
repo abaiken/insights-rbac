@@ -99,7 +99,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -109,11 +109,11 @@ class QuerySetTest(TestCase):
     def test_get_user_group_queryset_admin(self, mock_request):
         """Test get_group_queryset as an admin."""
         self._create_groups()
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.first()
         group.principals.add(principal)
-        user = Mock(spec=User, admin=True, account="00001", username="test_user")
-        req = Mock(user=user, tenant=self.tenant, query_params={"username": "test_user"})
+        user = Mock(spec=User, admin=True, account="00001", user_id="123456")
+        req = Mock(user=user, tenant=self.tenant, query_params={"user_id": "123456"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 1)
 
@@ -127,7 +127,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -137,15 +137,15 @@ class QuerySetTest(TestCase):
     def test_get_group_queryset_get_users_own_groups(self, mock_request):
         """Test get_group_queryset to get a users own groups."""
         self._create_groups()
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.first()
         group.principals.add(principal)
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456")
         req = Mock(
             user=user,
             method="GET",
             tenant=self.tenant,
-            query_params={"username": "test_user"},
+            query_params={"user_id": "123456"},
             path=reverse("group-list"),
         )
         queryset = get_group_queryset(req)
@@ -161,7 +161,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user2",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -171,12 +171,12 @@ class QuerySetTest(TestCase):
     def test_get_group_queryset_get_users_other_users_groups(self, mock_request):
         """Test get_group_queryset to get a users other users groups."""
         self._create_groups()
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
-        principal2 = Principal.objects.create(username="test_user2", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
+        principal2 = Principal.objects.create(user_id="123457", tenant=self.tenant)
         group = Group.objects.first()
         group.principals.add(principal)
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
-        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2"})
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456")
+        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"user_id": "123457"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 0)
 
@@ -199,10 +199,10 @@ class QuerySetTest(TestCase):
     )
     def test_get_user_group_queryset_admin_default_org_admin(self, mock_request):
         """Test get_group_queryset as an org admin searching for admin default groups."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group_admin_default", tenant=self.tenant, admin_default=True)
         group.principals.add(principal)
-        user = Mock(spec=User, admin=True, account="00001", username="test_user")
+        user = Mock(spec=User, admin=True, account="00001", user_id="123456")
         req = Mock(user=user, tenant=self.tenant, query_params={"username": "test_user"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 1)
@@ -217,7 +217,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -226,10 +226,10 @@ class QuerySetTest(TestCase):
     )
     def test_get_user_group_queryset_admin_default_non_org_admin(self, mock_request):
         """Test get_group_queryset not as an org admin, searching for admin default groups."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group_admin_default", tenant=self.tenant, admin_default=True)
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
-        req = Mock(user=user, tenant=self.tenant, query_params={"username": "test_user"})
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456")
+        req = Mock(user=user, tenant=self.tenant, query_params={"user_id": "123456"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 0)
 
@@ -243,7 +243,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -252,12 +252,12 @@ class QuerySetTest(TestCase):
     )
     def test_get_user_group_queryset_admin_and_platform_default(self, mock_request):
         """Test get_group_queryset not as an org admin, searching for groups that are admin and platform default."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(
             name="group_admin_default", tenant=self.tenant, admin_default=True, platform_default=True
         )
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
-        req = Mock(user=user, tenant=self.tenant, query_params={"username": "test_user"})
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456")
+        req = Mock(user=user, tenant=self.tenant, query_params={"user_id": "123456"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 1)
 
@@ -271,7 +271,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": False,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -280,13 +280,13 @@ class QuerySetTest(TestCase):
     )
     def test_get_user_group_queryset_admin_default_rbac_admin(self, mock_request):
         """Test get_group_queryset not as an org admin, but as an RBAC admin searching for admin default groups."""
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.create(name="group_admin_default", tenant=self.tenant, admin_default=True)
         permission = Permission.objects.create(permission="rbac:*:*", tenant=self.tenant)
         rbac_admin_role = Role.objects.create(name="RBAC admin role", tenant=self.tenant)
         access = Access.objects.create(permission=permission, role=rbac_admin_role, tenant=self.tenant)
-        user = Mock(spec=User, admin=False, account="00001", username="test_user", access=access)
-        req = Mock(user=user, tenant=self.tenant, query_params={"username": "test_user"})
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456", access=access)
+        req = Mock(user=user, tenant=self.tenant, query_params={"user_id": "123456"})
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 0)
 
@@ -311,7 +311,7 @@ class QuerySetTest(TestCase):
         """Test get_group_queryset to get the groups where can be user manually added."""
         # Create 5 groups and add principal to 1 of tem
         self._create_groups()
-        principal = Principal.objects.create(username="test_user", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.first()
         group.principals.add(principal)
 
@@ -323,12 +323,12 @@ class QuerySetTest(TestCase):
         # Check that 7 groups are created
         self.assertEquals(Group.objects.count(), 7)
 
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
+        user = Mock(spec=User, admin=False, account="00001", user_id="123456")
         req = Mock(
             user=user,
             method="GET",
             tenant=self.tenant,
-            query_params={"exclude_username": "test_user"},
+            query_params={"exclude_user_id": "123456"},
             path=reverse("group-list"),
         )
         queryset = get_group_queryset(req)
@@ -357,7 +357,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user2",
+                    "user_id": "123459",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -368,8 +368,8 @@ class QuerySetTest(TestCase):
         """Test get_role_queryset as a non-admin supplying a username."""
         roles = self._setup_roles_for_role_username_queryset_tests()
 
-        user = Mock(spec=User, admin=False, username="test_user2", access={})
-        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2"})
+        user = Mock(spec=User, admin=False, user_id="123459", access={})
+        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"user_id": "123459"})
         with self.assertRaises(PermissionDenied):
             get_role_queryset(req)
 
@@ -437,7 +437,7 @@ class QuerySetTest(TestCase):
         """Test get_role_queryset as a non-admin supplying a different username."""
         roles = self._setup_roles_for_role_username_queryset_tests()
 
-        user = Mock(spec=User, admin=False, username="test_user", access={})
+        user = Mock(spec=User, admin=False, user_id="123456", access={})
         req = Mock(user=user, tenant=self.tenant, method="GET", query_params={"username": "test_user2"})
         queryset = get_role_queryset(req)
         self.assertEquals(list(queryset), [])
@@ -453,7 +453,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user2",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -464,8 +464,8 @@ class QuerySetTest(TestCase):
         """Test get_role_queryset as an admin supplying a username."""
         roles = self._setup_roles_for_role_username_queryset_tests()
 
-        user = Mock(spec=User, admin=True, account="00001", username="test_user2")
-        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2"})
+        user = Mock(spec=User, admin=True, account="00001", user_id="123457")
+        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"user_id": "123457"})
         queryset = get_role_queryset(req)
         role = queryset.last()
         self.assertEquals(list(queryset), [roles.first()])
@@ -483,7 +483,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user2",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -494,12 +494,12 @@ class QuerySetTest(TestCase):
         """Test get_role_queryset with principal scope."""
         roles = self._setup_roles_for_role_username_queryset_tests()
 
-        user = Mock(spec=User, admin=True, account="00001", username="test_user2")
+        user = Mock(spec=User, admin=True, account="00001", user_id="123457")
         req = Mock(
             user=user,
             method="GET",
             tenant=self.tenant,
-            query_params={SCOPE_KEY: PRINCIPAL_SCOPE, "username": "test_user2"},
+            query_params={SCOPE_KEY: PRINCIPAL_SCOPE, "user_id": "123457"},
         )
         queryset = get_role_queryset(req)
         role = queryset.last()
@@ -518,7 +518,7 @@ class QuerySetTest(TestCase):
                     "is_org_admin": True,
                     "is_internal": False,
                     "id": 52567473,
-                    "username": "test_user2",
+                    "user_id": "123457",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -528,9 +528,13 @@ class QuerySetTest(TestCase):
     def test_get_role_queryset_admin_username_different(self, mock_request):
         """Test get_role_queryset as an admin supplying a different username."""
         roles = self._setup_roles_for_role_username_queryset_tests()
-        user = Mock(spec=User, admin=True, account="00001", username="admin")
-        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2"})
+        user = Mock(spec=User, admin=True, account="00001", user_id="000001")
+        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"user_id": "123457"})
         queryset = get_role_queryset(req)
+        print("\n\n\n\ngetting: ")
+        print(list(queryset))
+        print("\nexpecting:")
+        print(roles.first())
         self.assertEquals(list(queryset), [roles.first()])
         self.assertEquals(queryset.count(), 1)
 
@@ -677,7 +681,7 @@ class QuerySetTest(TestCase):
 
         self._setup_group_for_org_admin_tests()
 
-        user = Mock(spec=User, account="00001", username="test_user", admin=True)
+        user = Mock(spec=User, account="00001", user_id="123456", admin=True)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 
@@ -693,7 +697,7 @@ class QuerySetTest(TestCase):
 
         self._setup_group_for_org_admin_tests()
 
-        user = Mock(spec=User, account="00001", username="test_user", admin=False)
+        user = Mock(spec=User, account="00001", user_id="123456", admin=False)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 
@@ -729,7 +733,7 @@ class QuerySetTest(TestCase):
         permission = Permission.objects.create(permission="rbac:*:*", tenant=self.tenant)
         rbac_admin_role = Role.objects.create(name="RBAC admin role", tenant=self.tenant)
         access = Access.objects.create(permission=permission, role=rbac_admin_role, tenant=self.tenant)
-        user = Mock(spec=User, account="00001", username="test_user", admin=False, access=access)
+        user = Mock(spec=User, account="00001", user_id="123456", admin=False, access=access)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 
@@ -750,7 +754,7 @@ class QuerySetTest(TestCase):
         self._create_policies()
         self._create_roles()
 
-        principal = Principal.objects.create(username="test_user2", tenant=self.tenant)
+        principal = Principal.objects.create(user_id="123456", tenant=self.tenant)
         group = Group.objects.first()
         policy = Policy.objects.first()
         roles = Role.objects.all()

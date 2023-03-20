@@ -41,14 +41,14 @@ class PrincipalViewNonAdminTests(IdentityRequest):
             tenant_name=non_admin_tenant_name, account_id="1234", org_id="4321"
         )
 
-        self.user_data = {"username": "non_admin", "email": "non_admin@example.com"}
+        self.user_data = {"user_id": "non_admin", "email": "non_admin@example.com"}
         self.customer = {"account_id": "1234", "org_id": "4321", "tenant_name": non_admin_tenant_name}
         self.request_context = self._create_request_context(self.customer, self.user_data, is_org_admin=False)
 
         request = self.request_context["request"]
         self.headers = request.META
 
-        self.principal = Principal(username="test_user", tenant=self.tenant)
+        self.principal = Principal(user_id="123456", tenant=self.tenant)
         self.principal.save()
 
     def tearDown(self):
@@ -65,11 +65,11 @@ class PrincipalViewNonAdminTests(IdentityRequest):
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_principals",
-        return_value={"status_code": 200, "data": {"userCount": "1", "users": [{"username": "test_user"}]}},
+        return_value={"status_code": 200, "data": {"userCount": "1", "users": [{"user_id": "123456"}]}},
     )
     def test_non_admin_can_read_principal_list_with_permissions(self, mock_request):
         """Test that we can read a list of principals as a non-admin with proper permissions."""
-        non_admin_principal = Principal.objects.create(username="non_admin", tenant=self.non_admin_tenant)
+        non_admin_principal = Principal.objects.create(user_id="non_admin", tenant=self.non_admin_tenant)
         group = Group.objects.create(name="Non-admin group", tenant=self.non_admin_tenant)
         group.principals.add(non_admin_principal)
         policy = Policy.objects.create(name="Non-admin policy", group=group, tenant=self.non_admin_tenant)
@@ -92,7 +92,7 @@ class PrincipalViewNonAdminTests(IdentityRequest):
             account=self.customer["account_id"],
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "user_id_only": "false"},
             org_id=self.customer["org_id"],
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -103,8 +103,8 @@ class PrincipalViewNonAdminTests(IdentityRequest):
         self.assertEqual(len(response.data.get("data")), 1)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), self.principal.username)
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), self.principal.user_id)
 
 
 class PrincipalViewsetTests(IdentityRequest):
@@ -115,12 +115,12 @@ class PrincipalViewsetTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         user.org_id = self.customer_data["org_id"]
         request.user = user
 
-        self.principal = Principal(username="test_user", tenant=self.tenant)
+        self.principal = Principal(user_id="123456", tenant=self.tenant)
         self.principal.save()
 
     def tearDown(self):
@@ -131,15 +131,13 @@ class PrincipalViewsetTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_principals",
         return_value={
             "status_code": 200,
-            "data": [{"username": "test_user", "account_number": "1234", "org_id": "4321"}],
+            "data": [{"user_id": "123456", "account_number": "1234", "org_id": "4321"}],
         },
     )
     def test_read_principal_list_success(self, mock_request):
         """Test that we can read a list of principals."""
         # Create a cross_account user in rbac.
-        cross_account_principal = Principal.objects.create(
-            username="cross_account_user", cross_account=True, tenant=self.tenant
-        )
+        cross_account_principal = Principal.objects.create(user_id="123457", cross_account=True, tenant=self.tenant)
 
         url = reverse("principals")
         client = APIClient()
@@ -149,7 +147,7 @@ class PrincipalViewsetTests(IdentityRequest):
             account=self.customer_data["account_id"],
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
         # /principals/ endpoint won't return the cross_account_principal, which does not exist in IT.
@@ -161,15 +159,15 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(len(response.data.get("data")), 1)
 
         principal = response.data.get("data")[0]
-        self.assertCountEqual(list(principal.keys()), ["username", "account_number", "org_id"])
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), self.principal.username)
+        self.assertCountEqual(list(principal.keys()), ["user_id", "account_number", "org_id"])
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), self.principal.user_id)
 
         cross_account_principal.delete()
 
-    def test_read_principal_list_username_only_true_success(self):
-        """Test that we can read a list of principals with username_only=true."""
-        url = f'{reverse("principals")}?username_only=true'
+    def test_read_principal_list_user_id_only_true_success(self):
+        """Test that we can read a list of principals with user_id_only=true."""
+        url = f'{reverse("principals")}?user_id_only=true'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -181,14 +179,14 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(len(response.data.get("data")), 1)
 
         principal = response.data.get("data")[0]
-        self.assertCountEqual(list(principal.keys()), ["username"])
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), self.principal.username)
+        self.assertCountEqual(list(principal.keys()), ["user_id"])
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), self.principal.user_id)
 
     @override_settings(BYPASS_BOP_VERIFICATION=True)
-    def test_read_principal_list_username_only_false_success(self):
-        """Test that we can read a list of principals with username_only=false."""
-        url = f'{reverse("principals")}?username_only=false'
+    def test_read_principal_list_user_id_only_false_success(self):
+        """Test that we can read a list of principals with user_id_only=false."""
+        url = f'{reverse("principals")}?user_id_only=false'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -200,13 +198,13 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(len(response.data.get("data")), 1)
 
         principal = response.data.get("data")[0]
-        self.assertCountEqual(list(principal.keys()), ["username", "first_name", "last_name", "email", "user_id"])
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), self.principal.username)
+        self.assertCountEqual(list(principal.keys()), ["user_id", "first_name", "last_name", "email"])
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), self.principal.user_id)
 
-    def test_read_principal_list_username_only_invalid(self):
-        """Test that we get a 400 back with username_only=foo."""
-        url = f'{reverse("principals")}?username_only=foo'
+    def test_read_principal_list_user_id_only_invalid(self):
+        """Test that we get a 400 back with user_id_only=foo."""
+        url = f'{reverse("principals")}?user_id_only=foo'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -219,8 +217,8 @@ class PrincipalViewsetTests(IdentityRequest):
             "data": {
                 "userCount": "2",
                 "users": [
-                    {"username": "test_user1", "is_org_admin": "true"},
-                    {"username": "test_user2", "is_org_admin": "false"},
+                    {"user_id": "test_user1", "is_org_admin": "true"},
+                    {"user_id": "test_user2", "is_org_admin": "false"},
                 ],
             },
         },
@@ -235,7 +233,7 @@ class PrincipalViewsetTests(IdentityRequest):
             account=self.customer_data["account_id"],
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "admin_only": "false", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -246,23 +244,21 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(len(response.data.get("data")), 2)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), "test_user1")
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), "test_user1")
         self.assertIsNotNone(principal.get("is_org_admin"))
         self.assertTrue(principal.get("is_org_admin"))
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     def test_read_principal_filtered_list_success_without_cross_account_user(self, mock_request):
         """Test that we can read a filtered list of principals."""
         # Create a cross_account user in rbac.
-        cross_account_principal = Principal.objects.create(
-            username="cross_account_user", cross_account=True, tenant=self.tenant
-        )
+        cross_account_principal = Principal.objects.create(user_id="123457", cross_account=True, tenant=self.tenant)
 
-        url = f'{reverse("principals")}?usernames=test_user,cross_account_user&offset=30'
+        url = f'{reverse("principals")}?user_ids=test_user,cross_account_user&offset=30'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -272,7 +268,7 @@ class PrincipalViewsetTests(IdentityRequest):
             org_id=ANY,
             limit=10,
             offset=30,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
         )
         # Cross account user won't be returned.
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -283,18 +279,18 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(response.data.get("meta").get("count"), 1)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), "test_user")
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), "test_user")
 
         cross_account_principal.delete()
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     def test_read_principal_filtered_list_success(self, mock_request):
         """Test that we can read a filtered list of principals."""
-        url = f'{reverse("principals")}?usernames=test_user75&offset=30'
+        url = f'{reverse("principals")}?user_ids=test_user75&offset=30'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -304,7 +300,7 @@ class PrincipalViewsetTests(IdentityRequest):
             org_id=ANY,
             limit=10,
             offset=30,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         for keyname in ["meta", "links", "data"]:
@@ -314,16 +310,16 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(response.data.get("meta").get("count"), 1)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), "test_user")
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), "test_user")
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     def test_read_principal_partial_matching(self, mock_request):
         """Test that we can read a list of principals by partial matching."""
-        url = f'{reverse("principals")}?usernames=test_us,no_op&offset=30&match_criteria=partial'
+        url = f'{reverse("principals")}?user_ids=test_us,no_op&offset=30&match_criteria=partial'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -332,7 +328,7 @@ class PrincipalViewsetTests(IdentityRequest):
             input={"principalStartsWith": "test_us"},
             limit=10,
             offset=30,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -343,16 +339,16 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(response.data.get("meta").get("count"), 1)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), "test_user")
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), "test_user")
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_principals",
-        return_value={"status_code": 200, "data": [{"username": "test_user"}]},
+        return_value={"status_code": 200, "data": [{"user_id": "test_user"}]},
     )
     def test_read_principal_multi_filter(self, mock_request):
         """Test that we can read a list of principals by partial matching."""
-        url = f'{reverse("principals")}?usernames=test_us&email=test&offset=30&match_criteria=partial'
+        url = f'{reverse("principals")}?user_ids=test_us&email=test&offset=30&match_criteria=partial'
         client = APIClient()
         response = client.get(url, **self.headers)
 
@@ -361,7 +357,7 @@ class PrincipalViewsetTests(IdentityRequest):
             input={"principalStartsWith": "test_us", "emailStartsWith": "test"},
             limit=10,
             offset=30,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -372,8 +368,8 @@ class PrincipalViewsetTests(IdentityRequest):
         self.assertEqual(response.data.get("meta").get("count"), 1)
 
         principal = response.data.get("data")[0]
-        self.assertIsNotNone(principal.get("username"))
-        self.assertEqual(principal.get("username"), "test_user")
+        self.assertIsNotNone(principal.get("user_id"))
+        self.assertEqual(principal.get("user_id"), "test_user")
 
     def test_bad_query_param(self):
         """Test handling of bad query params."""
@@ -409,23 +405,23 @@ class PrincipalViewsetTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
         return_value={
             "status_code": 200,
-            "data": [{"username": "test_user", "account_number": "1234", "org_id": "4321", "id": "5678"}],
+            "data": [{"user_id": "123456", "account_number": "1234", "org_id": "4321", "id": "5678"}],
         },
     )
     def test_read_principal_list_account(self, mock_request):
         """Test that we can handle a request with matching accounts"""
-        url = f'{reverse("principals")}?usernames=test_user&offset=30&sort_order=desc'
+        url = f'{reverse("principals")}?user_ids=123456&offset=30&sort_order=desc'
         client = APIClient()
         proxy = PrincipalProxy()
         response = client.get(url, **self.headers)
 
         mock_request.assert_called_once_with(
-            ["test_user"],
+            ["123456"],
             account=ANY,
             org_id=ANY,
             limit=10,
             offset=30,
-            options={"sort_order": "desc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "desc", "status": "enabled", "user_id_only": "false"},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         for keyname in ["meta", "links", "data"]:
@@ -438,19 +434,18 @@ class PrincipalViewsetTests(IdentityRequest):
             resp = proxy._process_data(response.data.get("data"), account="1234", account_filter=True, return_id=True)
         self.assertEqual(len(resp), 1)
 
-        self.assertEqual(resp[0]["username"], "test_user")
-        self.assertEqual(resp[0]["user_id"], "5678")
+        self.assertEqual(resp[0]["user_id"], "123456")
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
         return_value={
             "status_code": 200,
-            "data": [{"username": "test_user", "account_number": "54321", "org_id": "54322"}],
+            "data": [{"user_id": "test_user", "account_number": "54321", "org_id": "54322"}],
         },
     )
     def test_read_principal_list_account_fail(self, mock_request):
         """Test that we can handle a request with matching accounts"""
-        url = f'{reverse("principals")}?usernames=test_user&offset=30'
+        url = f'{reverse("principals")}?user_ids=test_user&offset=30'
         client = APIClient()
         proxy = PrincipalProxy()
         response = client.get(url, **self.headers)
@@ -471,12 +466,12 @@ class PrincipalViewsetTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_filtered_principals",
         return_value={
             "status_code": 200,
-            "data": [{"username": "test_user", "account_number": "54321", "org_id": "54322"}],
+            "data": [{"user_id": "test_user", "account_number": "54321", "org_id": "54322"}],
         },
     )
     def test_read_principal_list_account_filter(self, mock_request):
         """Test that we can handle a request with matching accounts"""
-        url = f'{reverse("principals")}?usernames=test_user&offset=30'
+        url = f'{reverse("principals")}?user_ids=test_user&offset=30'
         client = APIClient()
         proxy = PrincipalProxy()
         response = client.get(url, **self.headers)
@@ -492,13 +487,13 @@ class PrincipalViewsetTests(IdentityRequest):
             resp = proxy._process_data(response.data.get("data"), account="1234", account_filter=False)
         self.assertEqual(len(resp), 1)
 
-        self.assertEqual(resp[0]["username"], "test_user")
+        self.assertEqual(resp[0]["user_id"], "test_user")
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_principals",
         return_value={
             "status_code": 200,
-            "data": [{"username": "test_user", "account_number": "54321", "org_id": "54322"}],
+            "data": [{"user_id": "test_user", "account_number": "54321", "org_id": "54322"}],
         },
     )
     def test_read_principal_list_by_email(self, mock_request):
@@ -523,17 +518,17 @@ class PrincipalViewsetTests(IdentityRequest):
             input={"primaryEmail": "test_user@example.com"},
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
 
-        self.assertEqual(resp[0]["username"], "test_user")
+        self.assertEqual(resp[0]["user_id"], "test_user")
 
     @patch(
         "management.principal.proxy.PrincipalProxy.request_principals",
         return_value={
             "status_code": 200,
-            "data": {"userCount": "1", "users": [{"username": "test_user", "is_org_admin": "true"}]},
+            "data": {"userCount": "1", "users": [{"user_id": "test_user", "is_org_admin": "true"}]},
         },
     )
     def test_read_users_of_desired_status(self, mock_request):
@@ -551,7 +546,7 @@ class PrincipalViewsetTests(IdentityRequest):
             account=self.customer_data["account_id"],
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "disabled", "admin_only": "false", "username_only": "false"},
+            options={"sort_order": "asc", "status": "disabled", "admin_only": "false", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
 
@@ -559,7 +554,7 @@ class PrincipalViewsetTests(IdentityRequest):
         "management.principal.proxy.PrincipalProxy.request_principals",
         return_value={
             "status_code": 200,
-            "data": {"userCount": "1", "users": [{"username": "test_user", "is_org_admin": "true"}]},
+            "data": {"userCount": "1", "users": [{"user_id": "test_user", "is_org_admin": "true"}]},
         },
     )
     def test_read_list_of_admins(self, mock_request):
@@ -577,7 +572,7 @@ class PrincipalViewsetTests(IdentityRequest):
             account=self.customer_data["account_id"],
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "admin_only": "true", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "admin_only": "true", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
 
@@ -603,7 +598,7 @@ class PrincipalViewsetTests(IdentityRequest):
             "status_code": 200,
             "data": [
                 {
-                    "username": "test_user",
+                    "user_id": "test_user",
                     "account_number": "54321",
                     "org_id": "54322",
                     "email": "test_user@example.com",
@@ -633,8 +628,8 @@ class PrincipalViewsetTests(IdentityRequest):
             input={"emailStartsWith": "test_use"},
             limit=10,
             offset=0,
-            options={"sort_order": "asc", "status": "enabled", "username_only": "false"},
+            options={"sort_order": "asc", "status": "enabled", "user_id_only": "false"},
             org_id=self.customer_data["org_id"],
         )
 
-        self.assertEqual(resp[0]["username"], "test_user")
+        self.assertEqual(resp[0]["user_id"], "test_user")

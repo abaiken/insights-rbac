@@ -64,7 +64,7 @@ class TenantAwareModel(models.Model):
 class User:
     """A request User."""
 
-    username = None
+    user_id = None
     account = None
     admin = False
     access = {}

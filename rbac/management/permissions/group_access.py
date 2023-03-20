@@ -34,9 +34,9 @@ class GroupAccessPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             if is_scope_principal(request) or request._request.path == reverse("group-list"):
                 return True
-            username = request.query_params.get("username")
-            if username:
-                return username == request.user.username
+            user_id = request.query_params.get("user_id")
+            if user_id:
+                return user_id == request.user.user_id
             else:
                 group_read = request.user.access.get("group", {}).get("read", [])
                 if group_read:

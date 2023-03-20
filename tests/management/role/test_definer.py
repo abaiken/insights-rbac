@@ -62,7 +62,7 @@ class RoleDefinerTests(IdentityRequest):
                             "metadata": {},
                             "payload": {
                                 "name": roles.first().name,
-                                "username": "Red Hat",
+                                "user_id": "Red Hat",
                                 "uuid": str(roles.first().uuid),
                             },
                         }
@@ -151,7 +151,7 @@ class RoleDefinerTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": non_platform_role_to_update.name,
-                                    "username": "Red Hat",
+                                    "user_id": "Red Hat",
                                     "uuid": str(non_platform_role_to_update.uuid),
                                 },
                             }
@@ -173,7 +173,7 @@ class RoleDefinerTests(IdentityRequest):
                                 "metadata": {},
                                 "payload": {
                                     "name": platform_role_to_update.name,
-                                    "username": "Red Hat",
+                                    "user_id": "Red Hat",
                                     "uuid": str(platform_role_to_update.uuid),
                                 },
                             }

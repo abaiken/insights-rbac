@@ -35,11 +35,11 @@ class PolicyViewsetTests(IdentityRequest):
         super().setUp()
         request = self.request_context["request"]
         user = User()
-        user.username = self.user_data["username"]
+        user.user_id = self.user_data["user_id"]
         user.account = self.customer_data["account_id"]
         request.user = user
 
-        self.principal = Principal(username=self.user_data["username"], tenant=self.tenant)
+        self.principal = Principal(user_id=self.user_data["user_id"], tenant=self.tenant)
         self.principal.save()
         self.group = Group(name="groupA", tenant=self.tenant)
         self.group.save()

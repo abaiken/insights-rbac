@@ -107,7 +107,7 @@ class GroupDefinerTests(IdentityRequest):
                             {
                                 "metadata": {},
                                 "payload": {
-                                    "username": "Red Hat",
+                                    "user_id": "Red Hat",
                                     "name": group.name,
                                     "uuid": str(group.uuid),
                                     "role": {"name": new_platform_role.name, "uuid": str(new_platform_role.uuid)},
@@ -130,7 +130,7 @@ class GroupDefinerTests(IdentityRequest):
                             {
                                 "metadata": {},
                                 "payload": {
-                                    "username": "Red Hat",
+                                    "user_id": "Red Hat",
                                     "name": group.name,
                                     "uuid": str(group.uuid),
                                     "role": {"name": role_to_remove.name, "uuid": str(role_to_remove.uuid)},

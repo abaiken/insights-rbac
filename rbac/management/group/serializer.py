@@ -111,7 +111,7 @@ class GroupSerializer(SerializerCreateOverrideMixin, serializers.ModelSerializer
         proxy = PrincipalProxy()
         formatted = super().to_representation(obj)
         principals = formatted.pop("principals")
-        users = [principal.get("username") for principal in principals]
+        users = [principal.get("user_id") for principal in principals]
         resp = proxy.request_filtered_principals(users, limit=len(users))
         if resp.get("status_code") == status.HTTP_200_OK:
             principals = resp.get("data")

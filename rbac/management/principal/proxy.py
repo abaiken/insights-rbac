@@ -70,8 +70,8 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
     def _create_params(limit=None, offset=None, options={}):
         """Create query parameters."""
         params = {}
-        if "username_only" in options and options["username_only"] == "true":
-            params["username_only"] = "true"
+        if "user_id_only" in options and options["user_id_only"] == "true":
+            params["user_id_only"] = "true"
         if limit:
             params["limit"] = limit
         if offset:
@@ -116,7 +116,7 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
     @staticmethod
     def _call_item(item, return_id=False):
         processed_item = {
-            "username": item.get("username"),
+            "user_id": item.get("user_id"),
             "email": item.get("email"),
             "first_name": item.get("first_name"),
             "last_name": item.get("last_name"),
@@ -125,7 +125,7 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
         }
 
         if return_id:
-            processed_item["user_id"] = item.get("id")
+            processed_item["user_id"] = item.get("user_id")
         return processed_item
 
     def _get_proxy_service(self):  # pylint: disable=no-self-use
@@ -158,11 +158,11 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
     ):
         """Send request to proxy service."""
         metrics_method = method.__name__.upper()
-        if params and params.get("username_only") == "true":
+        if params and params.get("user_id_only") == "true":
             principals = Principal.objects.all()
             if data and "users" in data:
-                principals = principals.filter(username__in=data["users"])
-            data = [dict(username=principal.username) for principal in principals]
+                principals = principals.filter(user_id__in=data["users"])
+            data = [dict(user_id=principal.user_id) for principal in principals]
             return dict(data=data, status_code=200)
 
         if settings.BYPASS_BOP_VERIFICATION:
@@ -171,18 +171,15 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
                 for principal in Principal.objects.all():
                     to_return.append(
                         dict(
-                            username=principal.username,
+                            user_id=principal.user_id,
                             first_name="foo",
                             last_name="bar",
                             email="baz",
-                            user_id="51736777",
                         )
                     )
             elif "users" in data:
                 for principal in data["users"]:
-                    to_return.append(
-                        dict(username=principal, first_name="foo", last_name="bar", email="baz", user_id=principal)
-                    )
+                    to_return.append(dict(first_name="foo", last_name="bar", email="baz", user_id=principal))
             elif "primaryEmail" in data:
                 # We can't fake a lookup for an email address, so we won't try.
                 pass

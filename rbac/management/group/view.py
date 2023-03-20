@@ -41,7 +41,7 @@ from management.permissions import GroupAccessPermission
 from management.principal.model import Principal
 from management.principal.proxy import PrincipalProxy
 from management.principal.serializer import PrincipalSerializer
-from management.principal.view import USERNAME_ONLY_KEY, VALID_BOOLEAN_VALUE
+from management.principal.view import USER_ID_ONLY_KEY, VALID_BOOLEAN_VALUE
 from management.querysets import get_group_queryset, get_role_queryset
 from management.role.view import RoleViewSet
 from management.utils import validate_and_get_key, validate_group_name, validate_uuid
@@ -52,7 +52,7 @@ from rest_framework.response import Response
 
 from api.models import Tenant
 
-USERNAMES_KEY = "usernames"
+USER_IDS_KEY = "user_ids"
 ROLES_KEY = "roles"
 EXCLUDE_KEY = "exclude"
 ORDERING_PARAM = "order_by"
@@ -60,8 +60,8 @@ VALID_ROLE_ORDER_FIELDS = list(RoleViewSet.ordering_fields)
 ROLE_DISCRIMINATOR_KEY = "role_discriminator"
 VALID_EXCLUDE_VALUES = ["true", "false"]
 VALID_GROUP_ROLE_FILTERS = ["role_name", "role_description", "role_display_name", "role_system"]
-VALID_GROUP_PRINCIPAL_FILTERS = ["principal_username"]
-VALID_PRINCIPAL_ORDER_FIELDS = ["username"]
+VALID_GROUP_PRINCIPAL_FILTERS = ["principal_user_id"]
+VALID_PRINCIPAL_ORDER_FIELDS = ["user_id"]
 VALID_ROLE_ROLE_DISCRIMINATOR = ["all", "any"]
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -106,7 +106,7 @@ class GroupFilter(CommonFilters):
         principals = [value.lower() for value in values.split(",")]
 
         for principal in principals:
-            queryset = queryset.filter(principals__username__iexact=principal)
+            queryset = queryset.filter(principals__user_id__iexact=principal)
 
         return queryset
 
@@ -349,7 +349,7 @@ class GroupViewSet(
         """Process list of principals and add them to the group."""
         tenant = self.request.tenant
 
-        users = [principal.get("username") for principal in principals]
+        users = [principal.get("user_id") for principal in principals]
         if settings.AUTHENTICATE_WITH_ORG_ID:
             resp = self.proxy.request_filtered_principals(users, org_id=org_id, limit=len(users))
         else:
@@ -362,17 +362,17 @@ class GroupViewSet(
                 "errors": [{"detail": "User(s) {} not found.".format(users), "status": "404", "source": "principals"}],
             }
         for item in resp.get("data", []):
-            username = item["username"]
+            user_id = item["user_id"]
             try:
-                principal = Principal.objects.get(username__iexact=username, tenant=tenant)
+                principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
             except Principal.DoesNotExist:
-                principal = Principal.objects.create(username=username, tenant=tenant)
+                principal = Principal.objects.create(user_id=user_id, tenant=tenant)
                 if settings.AUTHENTICATE_WITH_ORG_ID:
-                    logger.info("Created new principal %s for org_id %s.", username, org_id)
+                    logger.info("Created new principal %s for org_id %s.", user_id, org_id)
                 else:
-                    logger.info("Created new principal %s for account_id %s.", username, account)
+                    logger.info("Created new principal %s for account_id %s.", user_id, account)
             group.principals.add(principal)
-            group_principal_change_notification_handler(self.request.user, group, username, "added")
+            group_principal_change_notification_handler(self.request.user, group, user_id, "added")
         return group
 
     def remove_principals(self, group, principals, account=None, org_id=None):
@@ -380,26 +380,26 @@ class GroupViewSet(
         if settings.AUTHENTICATE_WITH_ORG_ID:
             tenant = Tenant.objects.get(org_id=org_id)
 
-            for username in principals:
+            for user_id in principals:
                 try:
-                    principal = Principal.objects.get(username__iexact=username, tenant=tenant)
+                    principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
                 except Principal.DoesNotExist:
-                    logger.info("No principal %s found for org id %s.", username, org_id)
+                    logger.info("No principal %s found for org id %s.", user_id, org_id)
                 if principal:
                     group.principals.remove(principal)
-                    group_principal_change_notification_handler(self.request.user, group, username, "removed")
+                    group_principal_change_notification_handler(self.request.user, group, user_id, "removed")
             return group
         else:
             tenant = Tenant.objects.get(tenant_name=f"acct{account}")
 
-            for username in principals:
+            for user_id in principals:
                 try:
-                    principal = Principal.objects.get(username__iexact=username, tenant=tenant)
+                    principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
                 except Principal.DoesNotExist:
-                    logger.info("No principal %s found for account %s.", username, account)
+                    logger.info("No principal %s found for account %s.", user_id, account)
                 if principal:
                     group.principals.remove(principal)
-                    group_principal_change_notification_handler(self.request.user, group, username, "removed")
+                    group_principal_change_notification_handler(self.request.user, group, user_id, "removed")
             return group
 
     @action(detail=True, methods=["get", "post", "delete"])
@@ -511,37 +511,37 @@ class GroupViewSet(
             serializer = PrincipalSerializer(page, many=True)
             principal_data = serializer.data
             if principal_data:
-                username_list = [principal["username"] for principal in principal_data]
+                user_id_list = [principal["user_id"] for principal in principal_data]
             else:
-                username_list = []
+                user_id_list = []
             proxy = PrincipalProxy()
             all_valid_fields = VALID_PRINCIPAL_ORDER_FIELDS + ["-" + field for field in VALID_PRINCIPAL_ORDER_FIELDS]
             if request.query_params.get(ORDERING_PARAM):
-                sort_field = validate_and_get_key(request.query_params, ORDERING_PARAM, all_valid_fields, "username")
-                sort_order = "des" if sort_field == "-username" else "asc"
+                sort_field = validate_and_get_key(request.query_params, ORDERING_PARAM, all_valid_fields, "user_id")
+                sort_order = "des" if sort_field == "-user_id" else "asc"
             else:
                 sort_order = None
             options = {
                 "sort_order": sort_order,
-                "username_only": validate_and_get_key(
-                    request.query_params, USERNAME_ONLY_KEY, VALID_BOOLEAN_VALUE, "false"
+                "user_id_only": validate_and_get_key(
+                    request.query_params, USER_ID_ONLY_KEY, VALID_BOOLEAN_VALUE, "false"
                 ),
             }
             if settings.AUTHENTICATE_WITH_ORG_ID:
-                resp = proxy.request_filtered_principals(username_list, org_id=org_id, options=options)
+                resp = proxy.request_filtered_principals(user_id_list, org_id=org_id, options=options)
             else:
-                resp = proxy.request_filtered_principals(username_list, account=account, options=options)
+                resp = proxy.request_filtered_principals(user_id_list, account=account, options=options)
             if isinstance(resp, dict) and "errors" in resp:
                 return Response(status=resp.get("status_code"), data=resp.get("errors"))
             response = self.get_paginated_response(resp.get("data"))
         else:
             self.protect_system_groups("remove principals")
-            if USERNAMES_KEY not in request.query_params:
+            if USER_IDS_KEY not in request.query_params:
                 key = "detail"
-                message = "Query parameter {} is required.".format(USERNAMES_KEY)
+                message = "Query parameter {} is required.".format(USER_IDS_KEY)
                 raise serializers.ValidationError({key: _(message)})
-            username = request.query_params.get(USERNAMES_KEY, "")
-            principals = [name.strip() for name in username.split(",")]
+            user_id = request.query_params.get(USER_IDS_KEY, "")
+            principals = [name.strip() for name in user_id.split(",")]
             if settings.AUTHENTICATE_WITH_ORG_ID:
                 self.remove_principals(group, principals, org_id=org_id)
             else:
