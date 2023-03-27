@@ -52,6 +52,7 @@ class RoleViewsetTests(IdentityRequest):
         request = self.request_context["request"]
         user = User()
         user.username = self.user_data["username"]
+        user.user_id = "123456"
         user.account = self.customer_data["account_id"]
         request.user = user
 
@@ -85,7 +86,7 @@ class RoleViewsetTests(IdentityRequest):
 
         self.test_tenant = Tenant(tenant_name="acct1111111", account_id="1111111", org_id="100001", ready=True)
         self.test_tenant.save()
-        self.test_principal = Principal(username="test_user", tenant=self.test_tenant)
+        self.test_principal = Principal(username="test_user", user_id="123456", tenant=self.test_tenant)
         self.test_principal.save()
 
         user_data = {"username": "test_user", "email": "test@gmail.com"}
@@ -686,6 +687,7 @@ class RoleViewsetTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "test_user",
+                    "user_id": 123456,
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -700,7 +702,9 @@ class RoleViewsetTests(IdentityRequest):
         new_display_fields.add(field_1)
         new_display_fields.add(field_2)
 
-        url = "{}?add_fields={},{}&username={}".format(URL, field_1, field_2, self.test_principal.username)
+        url = "{}?add_fields={},{}&username={}&user_id={}".format(
+            URL, field_1, field_2, self.test_principal.username, self.test_principal.user_id
+        )
         client = APIClient()
         response = client.get(url, **self.test_headers)
 

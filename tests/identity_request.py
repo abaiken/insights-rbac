@@ -69,7 +69,7 @@ class IdentityRequest(TestCase):
     @classmethod
     def _create_user_data(cls):
         """Create user data."""
-        user_data = {"username": cls.fake.user_name(), "email": cls.fake.email()}
+        user_data = {"username": cls.fake.user_name(), "user_id": "1111111", "email": cls.fake.email()}
         return user_data
 
     @classmethod
@@ -127,7 +127,7 @@ class IdentityRequest(TestCase):
                 "username": user_data.get("username"),
                 "email": user_data.get("email"),
                 "is_org_admin": is_org_admin,
-                "user_id": "1111111",
+                "user_id": user_data.get("user_id"),
             }
 
         if is_internal:

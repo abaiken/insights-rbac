@@ -66,7 +66,9 @@ def list_unmodified_tenants(request):
 
     GET /_private/api/tenant/unmodified/?limit=<limit>&offset=<offset>
     """
-    logger.info(f"Unmodified tenants requested by: {request.user.username}")
+    logger.info(
+        f"Unmodified tenants requested by: username '{request.user.username}' user_id '{request.user.user_id}'"
+    )
     limit = int(request.GET.get("limit", 0))
     offset = int(request.GET.get("offset", 0))
 
@@ -127,7 +129,7 @@ def tenant_view(request, org_id):
 
     DELETE /_private/api/tenant/<org_id>/
     """
-    logger.info(f"Tenant view: {request.method} {request.user.username}")
+    logger.info(f"Tenant view: {request.method} username: '{request.user.username}' user_id: '{request.user.user_id}'")
     if request.method == "DELETE":
         if not destructive_ok():
             return HttpResponse("Destructive operations disallowed.", status=400)
@@ -135,7 +137,9 @@ def tenant_view(request, org_id):
         tenant_obj = get_object_or_404(Tenant, org_id=org_id)
         with transaction.atomic():
             if tenant_is_unmodified(tenant_name=tenant_obj.tenant_name, org_id=org_id):
-                logger.warning(f"Deleting tenant {org_id}. Requested by {request.user.username}")
+                logger.warning(
+                    f"Deleting tenant {org_id}. Requested by username '{request.user.username}' user_id '{request.user.user_id}'"
+                )
                 TENANTS.delete_tenant(org_id)
                 tenant_obj.delete()
                 return HttpResponse(status=204)
@@ -150,7 +154,9 @@ def run_migrations(request):
     POST /_private/api/migrations/run/
     """
     if request.method == "POST":
-        logger.info(f"Running migrations: {request.method} {request.user.username}")
+        logger.info(
+            f"Running migrations: {request.method} username: '{request.user.username}' user_id: '{request.user.user_id}'"
+        )
         run_migrations_in_worker.delay()
         return HttpResponse("Migrations are running in a background worker.", status=202)
     return HttpResponse('Invalid method, only "POST" is allowed.', status=405)
@@ -250,7 +256,9 @@ def run_seeds(request):
             if not all([value in valid_values for value in seed_types]):
                 return HttpResponse(f'Valid options for "{option_key}": {valid_values}.', status=400)
             args = {type: True for type in seed_types}
-        logger.info(f"Running seeds: {request.method} {request.user.username}")
+        logger.info(
+            f"Running seeds: {request.method} username: '{request.user.username}' user_id: '{request.user.user_id}'"
+        )
         run_seeds_in_worker.delay(args)
         return HttpResponse("Seeds are running in a background worker.", status=202)
     return HttpResponse('Invalid method, only "POST" is allowed.', status=405)
@@ -286,7 +294,9 @@ def invalid_default_admin_groups(request):
     GET /_private/api/utils/invalid_default_admin_groups/
     DELETE /_private/api/utils/invalid_default_admin_groups/
     """
-    logger.info(f"Invalid default admin groups: {request.method} {request.user.username}")
+    logger.info(
+        f"Invalid default admin groups: {request.method} username: '{request.user.username}' user_id: '{request.user.user_id}'"
+    )
     public_tenant = Tenant.objects.get(tenant_name="public")
     invalid_default_admin_groups = Group.objects.filter(
         admin_default=True, system=False, platform_default=False

@@ -36,6 +36,7 @@ def build_internal_user(request, json_rh_auth):
             return None
         user.username = json_rh_auth["identity"].get("associate", {}).get("email", "system")
         user.admin = True
+        user.user_id = json_rh_auth["identity"].get("associate", {}).get("user_id")
         user.org_id = resolve(request.path).kwargs.get("org_id")
         return user
     except KeyError:

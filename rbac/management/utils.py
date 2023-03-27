@@ -53,6 +53,7 @@ def get_principal_from_request(request):
     current_user = request.user.username
     qs_user = request.query_params.get(USERNAME_KEY)
     username = current_user
+    user_id = request.user.user_id
     from_query = False
     if qs_user and not PRICIPAL_PERMISSION_INSTANCE.has_permission(request=request, view=None):
         raise PermissionDenied()
@@ -61,10 +62,10 @@ def get_principal_from_request(request):
         username = qs_user
         from_query = True
 
-    return get_principal(username, request, verify_principal=bool(qs_user), from_query=from_query)
+    return get_principal(username, user_id, request, verify_principal=bool(qs_user), from_query=from_query)
 
 
-def get_principal(username, request, verify_principal=True, from_query=False):
+def get_principal(username, user_id, request, verify_principal=True, from_query=False):
     """Get principals from username."""
     # First check if principal exist on our side,
     # if not call BOP to check if user exist in the account.
@@ -72,20 +73,20 @@ def get_principal(username, request, verify_principal=True, from_query=False):
     try:
         # If the username was provided through a query we must verify if it is an org admin from the BOP
         if from_query:
-            verify_principal_with_proxy(username, request, verify_principal=verify_principal)
+            verify_principal_with_proxy(username, user_id, request, verify_principal=verify_principal)
         principal = Principal.objects.get(username__iexact=username, tenant=tenant)
     except Principal.DoesNotExist:
-        verify_principal_with_proxy(username, request, verify_principal=verify_principal)
+        verify_principal_with_proxy(username, user_id, request, verify_principal=verify_principal)
 
         # Avoid possible race condition if the user was created while checking BOP
         principal, created = Principal.objects.get_or_create(
-            username=username, tenant=tenant
+            username=username, user_id=user_id, tenant=tenant
         )  # pylint: disable=unused-variable
 
     return principal
 
 
-def verify_principal_with_proxy(username, request, verify_principal=True):
+def verify_principal_with_proxy(username, user_id, request, verify_principal=True):
     """Verify username through the BOP."""
     account = request.user.account
     org_id = request.user.org_id
@@ -273,7 +274,8 @@ def account_id_for_tenant(tenant):
 
 def get_admin_from_proxy(username, request):
     """Return org_admin status of a username from the proxy."""
-    bop_resp = verify_principal_with_proxy(username, request, verify_principal=True)
+    user_id = request.query_params.get("user_id")
+    bop_resp = verify_principal_with_proxy(username, user_id, request, verify_principal=True)
 
     if bop_resp.get("data") == []:
         key = "detail"

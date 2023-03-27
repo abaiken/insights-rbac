@@ -28,6 +28,7 @@ class Principal(TenantAwareModel):
 
     uuid = models.UUIDField(default=uuid4, editable=False, unique=True, null=False)
     username = models.CharField(max_length=150)
+    user_id = models.CharField(max_length=36, unique=True, default=None, db_index=True, null=True)
     cross_account = models.BooleanField(default=False)
 
     class Meta:

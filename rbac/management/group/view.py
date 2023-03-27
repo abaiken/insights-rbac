@@ -375,6 +375,36 @@ class GroupViewSet(
             group_principal_change_notification_handler(self.request.user, group, username, "added")
         return group
 
+    def add_principals_user_id(self, group, principals, account=None, org_id=None):
+        """Process list of principals and add them to the group."""
+        tenant = self.request.tenant
+
+        users = [principal.get("user_id") for principal in principals]
+        if settings.AUTHENTICATE_WITH_ORG_ID:
+            resp = self.proxy.request_filtered_principals(users, org_id=org_id, limit=len(users))
+        else:
+            resp = self.proxy.request_filtered_principals(users, account=account, limit=len(users))
+        if "errors" in resp:
+            return resp
+        if len(resp.get("data", [])) == 0:
+            return {
+                "status_code": status.HTTP_404_NOT_FOUND,
+                "errors": [{"detail": "User(s) {} not found.".format(users), "status": "404", "source": "principals"}],
+            }
+        for item in resp.get("data", []):
+            user_id = item["user_id"]
+            try:
+                principal = Principal.objects.get(user_id__iexact=user_id, tenant=tenant)
+            except Principal.DoesNotExist:
+                principal = Principal.objects.create(user_id=user_id, tenant=tenant)
+                if settings.AUTHENTICATE_WITH_ORG_ID:
+                    logger.info("Created new principal %s for org_id %s.", user_id, org_id)
+                else:
+                    logger.info("Created new principal %s for account_id %s.", user_id, account)
+            group.principals.add(principal)
+            group_principal_change_notification_handler(self.request.user, group, username, "added")
+        return group
+
     def remove_principals(self, group, principals, account=None, org_id=None):
         """Process list of principals and remove them from the group."""
         if settings.AUTHENTICATE_WITH_ORG_ID:

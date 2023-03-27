@@ -162,6 +162,7 @@ class QuerySetTest(TestCase):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "test_user2",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -175,8 +176,10 @@ class QuerySetTest(TestCase):
         principal2 = Principal.objects.create(username="test_user2", tenant=self.tenant)
         group = Group.objects.first()
         group.principals.add(principal)
-        user = Mock(spec=User, admin=False, account="00001", username="test_user")
-        req = Mock(user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2"})
+        user = Mock(spec=User, admin=False, account="00001", username="test_user", user_id="123456")
+        req = Mock(
+            user=user, method="GET", tenant=self.tenant, query_params={"username": "test_user2", "user_id": "123456"}
+        )
         queryset = get_group_queryset(req)
         self.assertEquals(queryset.count(), 0)
 
@@ -670,14 +673,14 @@ class QuerySetTest(TestCase):
 
     def test_get_access_queryset_org_admin(self):
         """Test get_access_queryset with an org admin user"""
-        user_data = {"username": "test_user", "email": "admin@example.com"}
+        user_data = {"username": "test_user", "user_id": "123456", "email": "admin@example.com"}
         customer = {"account_id": "10001"}
         request_context = IdentityRequest._create_request_context(customer, user_data, is_org_admin=True)
         encoded_req = request_context["request"]
 
         self._setup_group_for_org_admin_tests()
 
-        user = Mock(spec=User, account="00001", username="test_user", admin=True)
+        user = Mock(spec=User, account="00001", username="test_user", user_id="123456", admin=True)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 
@@ -686,14 +689,14 @@ class QuerySetTest(TestCase):
 
     def test_get_access_queryset_non_org_admin(self):
         """Test get_access_queryset with a non 'org admin' user"""
-        user_data = {"username": "test_user", "email": "admin@example.com"}
+        user_data = {"username": "test_user", "user_id": "123456", "email": "admin@example.com"}
         customer = {"account_id": "10001"}
         request_context = IdentityRequest._create_request_context(customer, user_data, is_org_admin=False)
         encoded_req = request_context["request"]
 
         self._setup_group_for_org_admin_tests()
 
-        user = Mock(spec=User, account="00001", username="test_user", admin=False)
+        user = Mock(spec=User, account="00001", username="test_user", user_id="123456", admin=False)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 
@@ -719,7 +722,7 @@ class QuerySetTest(TestCase):
     )
     def test_get_access_queryset_non_org_admin_rbac_admin(self, mock_request):
         """Test get_access_queryset with a non 'org admin' but rbac admin user"""
-        user_data = {"username": "test_user", "email": "admin@example.com"}
+        user_data = {"username": "test_user", "user_id": "123456", "email": "admin@example.com"}
         customer = {"account_id": "10001"}
         request_context = IdentityRequest._create_request_context(customer, user_data, is_org_admin=False)
         encoded_req = request_context["request"]
@@ -729,7 +732,7 @@ class QuerySetTest(TestCase):
         permission = Permission.objects.create(permission="rbac:*:*", tenant=self.tenant)
         rbac_admin_role = Role.objects.create(name="RBAC admin role", tenant=self.tenant)
         access = Access.objects.create(permission=permission, role=rbac_admin_role, tenant=self.tenant)
-        user = Mock(spec=User, account="00001", username="test_user", admin=False, access=access)
+        user = Mock(spec=User, account="00001", username="test_user", user_id="123456", admin=False, access=access)
         req = Mock(user=user, method="GET", tenant=self.tenant, query_params={APPLICATION_KEY: "app"})
         req.META = encoded_req.META
 

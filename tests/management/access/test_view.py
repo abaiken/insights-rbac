@@ -44,6 +44,7 @@ class AccessViewTests(IdentityRequest):
         request = self.request_context["request"]
         user = User()
         user.username = self.user_data["username"]
+        user.user_id = 123456
         user.account = self.customer_data["account_id"]
         user.org_id = self.customer_data["org_id"]
         request.user = user
@@ -65,7 +66,7 @@ class AccessViewTests(IdentityRequest):
             tenant_name="acct1111111", account_id="1111111", org_id=test_tenant_org_id, ready=True
         )
         self.test_tenant.save()
-        self.test_principal = Principal(username="test_user", tenant=self.test_tenant)
+        self.test_principal = Principal(username="test_user", user_id="123456", tenant=self.test_tenant)
         self.test_principal.save()
         self.test_group = Group(name="test_groupA", tenant=self.test_tenant)
         self.test_group.save()
@@ -73,16 +74,16 @@ class AccessViewTests(IdentityRequest):
         self.test_group.save()
         self.test_permission = Permission.objects.create(permission="app:test_*:test_*", tenant=self.test_tenant)
         Permission.objects.create(permission="app:test_foo:test_bar", tenant=self.test_tenant)
-        user_data = {"username": "test_user", "email": "test@gmail.com"}
+        user_data = {"username": "test_user", "user_id": "123456", "email": "test@gmail.com"}
         request_context = self._create_request_context(
             {"account_id": "1111111", "tenant_name": "acct1111111", "org_id": "100001"}, user_data, is_org_admin=True
         )
         request = request_context["request"]
         self.test_headers = request.META
 
-        self.principal = Principal(username=user.username, tenant=self.tenant)
+        self.principal = Principal(username=user.username, user_id="111111", tenant=self.tenant)
         self.principal.save()
-        self.admin_principal = Principal(username="user_admin", tenant=self.tenant)
+        self.admin_principal = Principal(username="user_admin", user_id="222222", tenant=self.tenant)
         self.admin_principal.save()
         self.group = Group(name="groupA", tenant=self.tenant)
         self.group.save()
@@ -217,7 +218,7 @@ class AccessViewTests(IdentityRequest):
         url = "{}?application=".format(reverse("access"))
         account_id = self.customer_data["account_id"]
         org_id = self.customer_data["org_id"]
-        user_id = "123456"
+        user_id = "123457"
         user_name = f"{account_id}-{user_id}"
 
         # setup cross account request, role and permission in public schema
@@ -243,11 +244,11 @@ class AccessViewTests(IdentityRequest):
         cross_account_request.roles.add(role)
 
         # Create cross_account principal and role, permission in the account
-        user_data = {"username": user_name, "email": "test@gmail.com"}
+        user_data = {"username": user_name, "user_id": user_id, "email": "test@gmail.com"}
         request_context = self._create_request_context(self.customer_data, user_data, is_org_admin=False)
         request = request_context["request"]
         self.test_headers = request.META
-        Principal.objects.create(username=user_name, cross_account=True, tenant=self.tenant)
+        Principal.objects.create(username=user_name, user_id=user_id, cross_account=True, tenant=self.tenant)
 
         response = client.get(url, **self.test_headers)
 
@@ -268,6 +269,7 @@ class AccessViewTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -662,6 +664,7 @@ class AccessViewTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "test_user",
+                    "user_id": "123456",
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -690,6 +693,7 @@ class AccessViewTests(IdentityRequest):
         url = "{}?application={}&username={}&offset=1&limit=1".format(
             reverse("access"), "app", self.test_principal.username
         )
+
         response = client.get(url, **self.test_headers)
 
         get_policy.assert_called_with(principal_id, "app")

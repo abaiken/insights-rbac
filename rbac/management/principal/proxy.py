@@ -175,13 +175,19 @@ class PrincipalProxy:  # pylint: disable=too-few-public-methods
                             first_name="foo",
                             last_name="bar",
                             email="baz",
-                            user_id="51736777",
+                            user_id=principal.user_id,
                         )
                     )
             elif "users" in data:
                 for principal in data["users"]:
                     to_return.append(
-                        dict(username=principal, first_name="foo", last_name="bar", email="baz", user_id=principal)
+                        dict(
+                            username=principal,
+                            first_name="foo",
+                            last_name="bar",
+                            email="baz",
+                            user_id=principal.user_id,
+                        )
                     )
             elif "primaryEmail" in data:
                 # We can't fake a lookup for an email address, so we won't try.

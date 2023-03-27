@@ -988,6 +988,7 @@ class GroupViewsetTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "user_not_attaced_to_group_explicitly",
+                    "user_id": 111111,
                     "account_number": "1111111",
                     "is_active": True,
                 }
@@ -1014,6 +1015,7 @@ class GroupViewsetTests(IdentityRequest):
                     "is_internal": False,
                     "id": 52567473,
                     "username": "user_not_attaced_to_group_explicitly",
+                    "user_id": 111111,
                     "account_number": "1111111",
                     "is_active": True,
                 }

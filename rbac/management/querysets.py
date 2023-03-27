@@ -107,6 +107,7 @@ def _gather_group_querysets(request, args, kwargs):
     ) or Group.platform_default_set().filter(tenant=public_tenant)
 
     username = request.query_params.get("username")
+    user_id = request.query_params.get("user_id")
     exclude_username = request.query_params.get("exclude_username")
 
     if username and exclude_username:
@@ -117,7 +118,7 @@ def _gather_group_querysets(request, args, kwargs):
     if not username and kwargs:
         username = kwargs.get("principals")
     if username:
-        principal = get_principal(username, request)
+        principal = get_principal(username, user_id, request)
         if principal.cross_account:
             return Group.objects.none()
         return (
